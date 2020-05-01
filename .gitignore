@@ -1,0 +1,13 @@
+output/*
+codedump.py
+help.py
+Main.py
+main.py
+mainpaulo.py
+Mainbackup.py
+usr
+lib
+boot
+.vscode
+__pycache__
+*.pyc
