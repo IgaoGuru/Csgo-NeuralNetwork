@@ -129,12 +129,9 @@ def detect_on_image(img_path, img_is_path=False, threshold=0.5, rect_th=1, text_
     
     return person_pred_boxes, person_pred_scores
 
-
-
-def draw_bbox(img_path, boxes, path=None):
+def draw_bbox(img_path, boxes):
     """
     Given four points in an image matrix, draws box onto image and displays.
-    If given a path, function will save the modified image to the specified directory.
 
     img_path: (string) path to image file ==OR== (numpy) RGB Tensor
 
