@@ -17,6 +17,7 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 # bboxes = pd.read_csv(label_path)
 
 class CsgoPersonDataset(data.Dataset):
+
     """preety description."""
 
     length = -1
@@ -56,6 +57,7 @@ class CsgoPersonDataset(data.Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
+        #sets path and gets txt/jpg files
         img_path = self.find_folder(idx)
         img_name = "%sframe#%s" % (img_path, idx)
         img_path = os.path.join(self.root_dir,
@@ -64,18 +66,32 @@ class CsgoPersonDataset(data.Dataset):
         img = Image.open((img_path_ext))
         img = np.array(img)
         label_path = str(img_path) + '.txt'
+        label = 0
+        #loads label from disk, converts csv to tensor
         with open(label_path) as file:
             #if file has important data
             if os.stat(label_path).st_size != 0:
                 label = np.genfromtxt(file, delimiter=',')
                 if np.shape(label) == (5,):
                     label = np.reshape(label, (1, 5))
+                label_shape = np.shape(label)
+                label = label[0:1, 0:5]
                 label = torch.as_tensor(label, dtype=torch.int16)
-            #if file is blank (no data in the image)
+                label_shape = np.shape(label)
+            #if file is blank (no data in the image), create -1 matrix
             else:
                 label = torch.zeros([1, 5], dtype=torch.int16)
                 label[label==0] = -1
-        return {'image':img, 'label':label}
+                # label_shape = np.shape(label)
+                # print(label_shape)
+            
+            sample = {'image':img, 'label':label}
+            
+        #apply transforms
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
 
     def draw_bbox_batch(batch):
         """
@@ -96,10 +112,47 @@ class CsgoPersonDataset(data.Dataset):
 
         # return img
 
+class Rescale(object):
+    """Rescale the image in a sample to a given size.
+
+    Args:
+        output_size (tuple or int): Desired output size. If tuple, output is
+            matched to output_size. If int, smaller of image edges is matched
+            to output_size keeping aspect ratio the same.
+    """
+
+    def __init__(self, output_size):
+        assert isinstance(output_size, (int, tuple))
+        self.output_size = output_size
+
+    def __call__(self, sample):
+        image, label = sample['image'], sample['label']
+
+        h, w = image.shape[:2]
+        if isinstance(self.output_size, int):
+            if h > w:
+                new_h, new_w = self.output_size * h / w, self.output_size
+            else:
+                new_h, new_w = self.output_size, self.output_size * w / h
+        else:
+            new_h, new_w = self.output_size
+
+        new_h, new_w = int(new_h), int(new_w)
+
+        img = transform.resize(image, (new_h, new_w))
+
+        # h and w are swapped for landmarks because for images,
+        # x and y axes are axis 1 and 0 respectively
+        label = label * [new_w / w, new_h / h]
+
+        return {'image': img, 'label': label}
+
 dataset = CsgoPersonDataset(dataset_path)
 
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=5,
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=10,
                                         shuffle=True, num_workers=4)
+
+
 
 
 # for i in range(1, 1000):
@@ -107,10 +160,11 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=5,
 #     print(labelss)
 
 
-for i in range(1, 150):
+for i in range(1, 5000):
     dataiter = iter(dataloader)
     data = dataiter.next()
     img, labels = data['image'], data['label']
+    print('done:')
     print(labels)
     print(labels.size())
 
