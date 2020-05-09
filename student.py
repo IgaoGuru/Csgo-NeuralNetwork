@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from torch.utils import data
 import torch
+from torchvision import transforms
 from natsort import natsorted, ns
 import cv2
 from PIL import Image
@@ -27,22 +28,17 @@ class CsgoPersonDataset(data.Dataset):
         Args:
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
-                on a sample.
+                on a sample.6)
         """
         self.root_dir = root_dir
         self.transform = transform
         self.length = 0
         #dictionary that marks what the last frame of each folder is
         #ie. number of examples in specific folder
-        self.folder_system = {5098:'CSGOraw1'}
+        self.folder_system = {10167:'CSGOraw1'}
 
-        for idx, (folder, _, _) in enumerate(os.walk(self.root_dir)):
-            if idx == 0:
-                continue
-            sorted_files = natsorted(os.listdir(folder), alg=ns.IGNORECASE)
-            for file in sorted_files:
-                if file[-3:] == 'txt':
-                    self.length += 1
+        for folder_index in self.folder_system:
+            self.length += folder_index
         
     #returns name of folder that contains specific frame
     def find_folder(self, idx):
@@ -64,7 +60,7 @@ class CsgoPersonDataset(data.Dataset):
                                 img_path, img_name)
         img_path_ext = img_path + '.jpg'
         img = Image.open((img_path_ext))
-        img = np.array(img)
+        # img = np.array(img)
         label_path = str(img_path) + '.txt'
         label = 0
         #loads label from disk, converts csv to tensor
@@ -82,93 +78,24 @@ class CsgoPersonDataset(data.Dataset):
             else:
                 label = torch.zeros([1, 5], dtype=torch.int16)
                 label[label==0] = -1
-                # label_shape = np.shape(label)
-                # print(label_shape)
             
             sample = {'image':img, 'label':label}
             
         #apply transforms
+        #TODO: farofa aqui hein
         if self.transform:
-            sample = self.transform(sample)
+            img = self.transform(sample['image'])
+            sample['image'] = img
 
         return sample
 
-    def draw_bbox_batch(batch):
-        """
-        Show image with boxes for a batch of images.
-        """
-        images_batch, label_batch = \
-                batch['image'], batch['label']
-        batch_size = len(images_batch)
-        im_size = images_batch.size(2)
-        grid_border_size = 2
+transform = transforms.Compose([
+    transforms.Resize([320, 180]),
+    transforms.ToTensor()
+])
 
-        grid = utils.make_grid(images_batch)
-        plt.imshow(grid.numpy().transpose((1, 2, 0)))
+dataset = CsgoPersonDataset(dataset_path, transform)
 
-        # for box in boxes:
-        #     box_int = [int(i) for i in box]
-        #     img = cv2.rectangle(img, (box_int[0], box_int[1]), (box_int[2], box_int[3]), (0, 255, 0), thickness=1)
-
-        # return img
-
-class Rescale(object):
-    """Rescale the image in a sample to a given size.
-
-    Args:
-        output_size (tuple or int): Desired output size. If tuple, output is
-            matched to output_size. If int, smaller of image edges is matched
-            to output_size keeping aspect ratio the same.
-    """
-
-    def __init__(self, output_size):
-        assert isinstance(output_size, (int, tuple))
-        self.output_size = output_size
-
-    def __call__(self, sample):
-        image, label = sample['image'], sample['label']
-
-        h, w = image.shape[:2]
-        if isinstance(self.output_size, int):
-            if h > w:
-                new_h, new_w = self.output_size * h / w, self.output_size
-            else:
-                new_h, new_w = self.output_size, self.output_size * w / h
-        else:
-            new_h, new_w = self.output_size
-
-        new_h, new_w = int(new_h), int(new_w)
-
-        img = transform.resize(image, (new_h, new_w))
-
-        # h and w are swapped for landmarks because for images,
-        # x and y axes are axis 1 and 0 respectively
-        label = label * [new_w / w, new_h / h]
-
-        return {'image': img, 'label': label}
-
-dataset = CsgoPersonDataset(dataset_path)
-
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=10,
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=5,
                                         shuffle=True, num_workers=4)
 
-
-
-
-# for i in range(1, 1000):
-#     labelss = dataset[i]['label']
-#     print(labelss)
-
-
-for i in range(1, 5000):
-    dataiter = iter(dataloader)
-    data = dataiter.next()
-    img, labels = data['image'], data['label']
-    print('done:')
-    print(labels)
-    print(labels.size())
-
-# for data in dataloader:
-#     print(data)
-
-# CsgoPersonDataset.draw_bbox_batch(dataloader)

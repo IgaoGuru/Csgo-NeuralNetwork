@@ -14,7 +14,7 @@ avg_time_frame = 0
 #setting device etc.
 cap = cv2.VideoCapture(video_path)
 success = cap.grab() # get the next frame
-num_frames = 0
+num_frames = -1 #starts at -1 so naming of labels start at 0
 absolute_frames = 0
 start_time = time.time()
 
