@@ -41,26 +41,21 @@ while success:
     
     if num_frames % detectionrate == 0:
         #apply model to image
-        pred_boxes, pred_scores = detector.detect_on_image(img)
+        pred_boxes = detector.detect_on_image(img, threshold=0.85)
     
     with open(output_path + ".txt", "w") as file:
-        if num_frames % detectionrate == 0 and pred_boxes != None:
+        if num_frames % detectionrate == 0:
             for idx, box in enumerate(pred_boxes):
-                box = str(box)
-                box = box.replace('[', '')
-                box = box.replace(']', '')
-                box = box.replace('(', '')
-                box = box.replace(')', '')
-                box = box.replace(' ', '')
-
-                confidence = str(pred_scores[idx])
-                confidence = confidence.replace('[', '')
-                confidence = confidence.replace(']', '')
-                confidence = confidence.replace('(', '')
-                confidence = confidence.replace(')', '')
-                confidence = confidence.replace(' ', '')
-                file.write(confidence + ',' + box + "\n")
-        pass
+                if box != None:    
+                    box = str(box)
+                    box = box.replace('[', '')
+                    box = box.replace(']', '')
+                    box = box.replace('(', '')
+                    box = box.replace(')', '')
+                    box = box.replace(' ', '')
+                    file.write(box + "\n")
+                else:
+                    file.write("")
     end_time = time.time()
     avg_time_frame = absolute_frames / (end_time - start_time)
     print(avg_time_frame)

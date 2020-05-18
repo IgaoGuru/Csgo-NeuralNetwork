@@ -117,17 +117,12 @@ def detect_on_image(img_path, img_is_path=False, threshold=0.5, rect_th=1, text_
     #         pred_boxes[i][0], cv2.FONT_HERSHEY_SIMPLEX,
     #         text_size, (0, 255, 0), thickness=text_th)
     
-    #TODO: enable threshold
     person_pred_boxes = []
-    person_pred_scores = []
     for idx, box in enumerate(pred_boxes):
-        if pred_class[idx] == 'person': 
+        if pred_class[idx] == 'person' and pred_scores[idx] >= threshold:
             person_pred_boxes.append(box)
-            person_pred_scores.append(pred_scores[idx])
     
-    
-    
-    return person_pred_boxes, person_pred_scores
+    return person_pred_boxes
 
 def draw_bbox(img_path, boxes):
     """
