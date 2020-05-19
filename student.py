@@ -21,7 +21,7 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 train_split = 0.7
 test_split = 0.3
 num_epochs = 2
-batch_size = 2
+batch_size = 100
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -112,15 +112,15 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(3, 16, 5)
         self.conv2 = nn.Conv2d(16, 32, 5)
         self.mp = nn.MaxPool2d(2)
-        self.fc1 = nn.Linear(39680*136, 10)
+        self.fc1 = nn.Linear(15872*136, 10)
         self.fc2 = nn.Linear(10, 4)
 
     def forward(self, x):
         print(np.shape(x))
         # x = self.fc0(x)
-        x = (F.relu(self.conv1(x))
+        x = F.relu(self.conv1(x))
         x = self.conv2(x)
-        x = x.view(-1, 39680*136)
+        x = x.view(-1, 15872*136)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
 
