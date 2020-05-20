@@ -1,6 +1,5 @@
 #TODO: use only one (RGB) channel
 import numpy as np
-import pandas as pd
 import os
 from torch.utils import data
 from torch.utils.data.dataloader import DataLoader as DataLoader
