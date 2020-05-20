@@ -48,16 +48,26 @@ class CsgoPersonDataset(data.Dataset):
         self.length = 0
         #dictionary that marks what the last frame of each folder is
         #ie. number of examples in specific folder
-        self.folder_system = {10167:'CSGOraw1'}
+        self.folder_system = {}
 
-        for folder_index in self.folder_system:
-            self.length += folder_index
+        for folder in os.listdir(dataset_path):
+            folder_len  = 0
+            for file in os.listdir(dataset_path + folder):
+                folder_len += 1
+            self.folder_system[folder_len] = '%s'%(folder)
+
+        for folder_len in self.folder_system:
+            self.length += folder_len
+        self.length = int(self.length / 2)
+        print(self.length)
         
     #returns name of folder that contains specific frame
     def find_folder(self, idx):
         for num_frames in self.folder_system:
             if num_frames >= idx:
                 return str(self.folder_system[num_frames])
+            else:
+                idx = idx - num_frames
 
     def __len__(self):
         return self.length
