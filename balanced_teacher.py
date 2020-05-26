@@ -8,9 +8,9 @@ from random import randint
 
 #variable settings
 output_path = 'output'  
-video_path = "/home/igor/Documents/CSGOraw1.mp4"
+video_path = "/home/igor/Documents/csgofootage/CSGOraw2.mp4"
 samplerate = 1 #video capture framerate
-detectionrate = 3 #neural-network passthrogh rate
+detectionrate = 100 #neural-network passthrogh rate
 seed(42)
 
 #setting device etc.
@@ -31,17 +31,20 @@ ones_zeros = []
 def select_zeros(ones_zeros, random=True):
     one_count = ones_zeros.count(1)
     zeros_idx = []
+    if one_count == 0:
+        print("no entities  were detected in the footage")
     
     if random:
         for i in range(one_count):
-            idx = randint(0, ones_zeros.len())
-            while ones_zeros[j] == 1:
-                idx = randint(0, ones_zeros.len())
+            idx = randint(0, len(ones_zeros)-1)
+            while ones_zeros[idx] == 1 or ones_zeros[idx] == 2:
+                idx = randint(0, len(ones_zeros)-1)
             zeros_idx.append(idx)
         return  zeros_idx
 
+#NOTE:cap.set(1, 11021)
 
-#while still capturing:
+# while still capturing:
 while success:
     absolute_frames += 1
     output_path = output_path_root
@@ -53,8 +56,12 @@ while success:
     
     if absolute_frames % detectionrate == 0:
         #apply model to image
-        pred_boxes = detector.detect_on_image(img, threshold=0.85)
-    
+        try:
+            pred_boxes = detector.detect_on_image(img, threshold=0.89)
+        except RuntimeError:
+            #if memory runs out, as if frame was not detected
+            ones_zeros.append(2)
+            continue
     
     if absolute_frames % detectionrate == 0:
         for idx, box in enumerate(pred_boxes):
@@ -79,6 +86,10 @@ while success:
 
             else:
                 ones_zeros.append(0)
+    else:
+        #filling in the gaps of all frames
+        #that werent analized
+        ones_zeros.append(2)
 
     end_time = time.time()
     avg_time_frame = absolute_frames / (end_time - start_time)
@@ -87,12 +98,18 @@ while success:
     cv2.imshow("screen", img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-
+ 
 cv2.destroyAllWindows()
+with open(output_path_root + ".txt", "w") as file:
+    file.write("%s"%(ones_zeros))
+
+# ones_zeros = np.genfromtxt("/home/igor/mlprojects/Csgo-NeuralNetwork/output/CSGOraw2.txt", delimiter=",", dtype = int)
+# ones_zeros = list(ones_zeros)
 
 zeros_idx = select_zeros(ones_zeros)
 
 for zero in zeros_idx:
+    output_path = output_path_root
     labeled_frames += 1
     cap.set(1, zero)
     _, img = cap.read()
