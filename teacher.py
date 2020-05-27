@@ -6,7 +6,7 @@ import detector
 
 #variable settings
 output_path = 'output'  
-video_path = "/home/igor/Documents/CSGOraw1.mp4"
+video_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetwork\\CSGOraw2.mp4"
 samplerate = 1 #video capture framerate
 detectionrate = 3 #neural-network passthrogh rate
 avg_time_frame = 0
@@ -21,8 +21,9 @@ start_time = time.time()
 #storing output preparation
 video_title = os.path.basename(video_path)
 video_title = str(os.path.splitext(video_title)[0])
+#os.mkdir(output_path)
 output_path_root = output_path + "/" + video_title
-os.mkdir(output_path_root)
+#os.mkdir(output_path_root)
 
 #while still capturing:
 while success:
@@ -41,7 +42,7 @@ while success:
     
     if num_frames % detectionrate == 0:
         #apply model to image
-        pred_boxes = detector.detect_on_image(img, threshold=0.85)
+        pred_boxes = detector.detect_on_image(img, threshold=0.7)
     
     with open(output_path + ".txt", "w") as file:
         if num_frames % detectionrate == 0:
