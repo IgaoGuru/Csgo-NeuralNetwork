@@ -1,6 +1,5 @@
-#TODO: use only one (RGB) channel
+# TODO: use only one (RGB) channel
 import numpy as np
-import pandas as pd
 import os
 from torch.utils import data
 from torch.utils.data.dataloader import DataLoader as DataLoader
@@ -15,24 +14,23 @@ import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
 
-
-dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetwork\\output\\"
-#train_split and test_split 0.1 > x > 0.9 and must add up to 1
+dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
+# train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 test_split = 0.3
-num_epochs = 10
+num_epochs = 2
 batch_size = 100
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
-    print("Running on: %s"%(torch.cuda.get_device_name(device)))
+    print("Running on: %s" % (torch.cuda.get_device_name(device)))
 else:
     device = torch.device("cpu")
     print('running on: CPU')
 
 
-class CsgoPersonNoPersonDataset(data.Dataset):
-    """pretty description."""
+class CsgoPersonDataset(data.Dataset):
+    """preety description."""
 
     length = -1
 
@@ -48,16 +46,26 @@ class CsgoPersonNoPersonDataset(data.Dataset):
         self.length = 0
         # dictionary that marks what the last frame of each folder is
         # ie. number of examples in specific folder
-        self.folder_system = {2426: 'CSGOraw2'}
+        self.folder_system = {}
 
-        for folder_index in self.folder_system:
-            self.length += folder_index
+        for folder in os.listdir(dataset_path):
+            folder_len = 0
+            for file in os.listdir(dataset_path + folder):
+                folder_len += 1
+            self.folder_system[folder_len] = '%s' % (folder)
+
+        for folder_len in self.folder_system:
+            self.length += folder_len
+        self.length = int(self.length / 2)
+        print(self.length)
 
     # returns name of folder that contains specific frame
     def find_folder(self, idx):
         for num_frames in self.folder_system:
             if num_frames >= idx:
                 return str(self.folder_system[num_frames])
+            else:
+                idx = idx - num_frames
 
     def __len__(self):
         return self.length
@@ -77,9 +85,22 @@ class CsgoPersonNoPersonDataset(data.Dataset):
         label_path = str(img_path) + '.txt'
         label = 0
         # loads label from disk, converts csv to tensor
+        with open(label_path) as file:
+            # if file has important data
+            if os.stat(label_path).st_size != 0:
+                label = np.genfromtxt(file, delimiter=',')
+                if np.shape(label) == (4,):
+                    label = np.reshape(label, (1, 4))
+                label = label[0:1, 0:4]
+                label_shape = np.shape(label)
+                label = torch.as_tensor(label, dtype=torch.float)
+                label_shape = np.shape(label)
+            # if file is blank (no data in the image), create -1 matrix
+            else:
+                label = torch.zeros([1, 4], dtype=torch.float)
+                label[label == 0] = -1
 
-        label = torch.as_tensor(os.stat(label_path).st_size != 0, dtype=torch.float).reshape((1,))
-        sample = {'image': img, 'label': label}
+            sample = {'image': img, 'label': label}
 
         # apply transforms
         # TODO: farofa aqui hein
@@ -90,80 +111,66 @@ class CsgoPersonNoPersonDataset(data.Dataset):
 
         return sample
 
-#defining NN layeres
+
+# defining NN layeres
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool1 = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.pool2 = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(16 * 61 * 33, 120)
-        self.fc2 = nn.Linear(120, 60)
-        self.fc3 = nn.Linear(60, 1)
-        self.fc4 = nn.Linear(30, 15)
-        self.fc5 = nn.Linear(15, 7)
-        self.fc6 = nn.Linear(7, 1)
+        # self.fc0 = nn.BatchNorm1d(num_features=3*320*180)
+        self.conv1 = nn.Conv2d(3, 16, 5)
+        self.conv2 = nn.Conv2d(16, 32, 5)
+        self.mp = nn.MaxPool2d(2)
+        self.fc1 = nn.Linear(15872 * 136, 10)
+        self.fc2 = nn.Linear(10, 4)
 
     def forward(self, x):
-        x = self.pool1(F.relu(self.conv1(x)))
-        x = self.pool2(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 61 * 33)
+        print(np.shape(x))
+        # x = self.fc0(x)
+        x = F.relu(self.conv1(x))
+        x = self.conv2(x)
+        x = x.view(-1, 15872 * 136)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        #x = F.relu(self.fc4(x))
-        #x = F.relu(self.fc5(x))
-        #x = F.relu(self.fc6(x))
+        x = self.fc2(x)
+
         return x
 
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
-        torch.nn.init.xavier_uniform_(m.weight.data)
 
-#runs NN in training mode
+# runs NN in training mode
 def train_run(train_loader, criterion, optimizer, device):
-    losses = []
-    print(len(train_loader.dataset))
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
-        for i, data in enumerate(train_loader):
+        for i, data in enumerate(train_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
-            #if labels[0].item() == -1:
-            #    continue
-            #sends batch to gpu
+            # sends batch to gpu
             inputs, labels = inputs.to(device), labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
+
             # forward + backward + optimize
-            #print(f"{epoch}, {i}")
             outputs = net(inputs)
-            #print(f"Labels: {labels.shape}, {labels.dtype}")
-            #print(f"Outputs: {outputs.shape}, {outputs.dtype}")
-
             loss = criterion(outputs, labels)
-            losses.append(loss.item())
-            running_loss += loss.item()
-            if (i + 1) % 10 == 0:  # print every 10 mini-batches
-                print(f"Labels: {torch.transpose(labels, 0, 1)}")
-                print(f"Outputs: {torch.transpose(outputs, 0, 1)}")
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 10))
-                running_loss = 0.0
-                print("-------------------------------------")
 
-            loss.backward()
+            print(loss.item())
+            print(outputs)
+            # print(labels)
+
+            loss.backward(create_graph=True)
+
             optimizer.step()
 
+            running_loss += loss.item()
+            # if i % 2000 == 1999:    # print every 2000 mini-batches
+            #     print('[%d, %5d] loss: %.3f' %
+            #           (epoch + 1, i + 1, running_loss / 2000))
+            #     running_loss = 0.0
+
     print('Finished Training')
-    return losses
+
 
 net = Net().to(device)
-net.apply(weights_init)
 
 transform = transforms.Compose([
     transforms.Resize([256, 144]),
@@ -171,7 +178,7 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-dataset = CsgoPersonNoPersonDataset(dataset_path, transform)
+dataset = CsgoPersonDataset(dataset_path, transform)
 
 dataset_len = len(dataset)
 
@@ -179,29 +186,17 @@ train_split = int(np.floor(dataset_len * train_split))
 test_split = int(np.floor(dataset_len * test_split))
 while train_split + test_split != dataset_len:
     train_split += 1
-train_set, test_set = torch.utils.data.random_split(\
+train_set, test_set = torch.utils.data.random_split( \
     dataset, [train_split, test_split])
-    
-train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=False, drop_last=True)
-test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, drop_last=True)
 
-def my_binary_loss(output, target):
-    return (output and target).mean
+train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, num_workers=4)
 
 criterion = nn.MSELoss()
-criterion = nn.BCEWithLogitsLoss()
-
-optimizer = optim.Adam(net.parameters())
-
-
+optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
 # for i in range(500):
 #     image, label = dataset[i]['image'], dataset[i]['label']
 #     print(label)
 
-losses = train_run(train_loader, criterion, optimizer, device)
-print("------------------------------------------------------------")
-print("Losses")
-for loss in losses:
-    print(loss)
-print("------------------------------------------------------------")
+train_run(train_loader, criterion, optimizer, device)
