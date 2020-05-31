@@ -1,4 +1,4 @@
-#TODO: use only one (RGB) channel
+# TODO: use only one (RGB) channel
 import numpy as np
 import os
 from torch.utils import data
@@ -14,9 +14,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
 
-
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
-#train_split and test_split 0.1 > x > 0.9 and must add up to 1
+# train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 test_split = 0.3
 num_epochs = 2
@@ -24,16 +23,20 @@ batch_size = 5
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
-    print("Running on: %s"%(torch.cuda.get_device_name(device)))
+    print("Running on: %s" % (torch.cuda.get_device_name(device)))
 else:
     device = torch.device("cpu")
     print('running on: CPU')
 
-class CsgoPersonDataset(data.Dataset):
 
+<<<<<<< HEAD
 
     """Dataset that accesses multiple folders containing images and labels,
     apllies transforms and creates image:label dictionary pairs."""
+=======
+class CsgoPersonDataset(data.Dataset):
+    """preety description."""
+>>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
 
     length = -1
 
@@ -47,22 +50,22 @@ class CsgoPersonDataset(data.Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.length = 0
-        #dictionary that marks what the last frame of each folder is
-        #ie. number of examples in specific folder
+        # dictionary that marks what the last frame of each folder is
+        # ie. number of examples in specific folder
         self.folder_system = {}
 
         for folder in os.listdir(dataset_path):
-            folder_len  = 0
+            folder_len = 0
             for file in os.listdir(dataset_path + folder):
                 folder_len += 1
-            self.folder_system[folder_len] = '%s'%(folder)
+            self.folder_system[folder_len] = '%s' % (folder)
 
         for folder_len in self.folder_system:
             self.length += folder_len
         self.length = int(self.length / 2)
         print(self.length)
-        
-    #returns name of folder that contains specific frame
+
+    # returns name of folder that contains specific frame
     def find_folder(self, idx):
         for num_frames in self.folder_system:
             if num_frames >= idx:
@@ -77,7 +80,7 @@ class CsgoPersonDataset(data.Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        #sets path and gets txt/jpg files
+        # sets path and gets txt/jpg files
         img_path = self.find_folder(idx)
         img_name = "%sframe#%s" % (img_path, idx)
         img_path = os.path.join(self.root_dir,
@@ -87,9 +90,9 @@ class CsgoPersonDataset(data.Dataset):
         # img = np.array(img)
         label_path = str(img_path) + '.txt'
         label = 0
-        #loads label from disk, converts csv to tensor
+        # loads label from disk, converts csv to tensor
         with open(label_path) as file:
-            #if file has important data
+            # if file has important data
             if os.stat(label_path).st_size != 0:
                 label = np.genfromtxt(file, delimiter=',')
                 if np.shape(label) == (4,):
@@ -98,8 +101,9 @@ class CsgoPersonDataset(data.Dataset):
                 label_shape = np.shape(label)
                 label = torch.as_tensor(label, dtype=torch.long)
                 label_shape = np.shape(label)
-            #if file is blank (no data in the image), create -1 matrix
+            # if file is blank (no data in the image), create -1 matrix
             else:
+<<<<<<< HEAD
                 label = torch.zeros([1, 4], dtype=torch.long)
                 label[label==0] = -1
             
@@ -107,6 +111,15 @@ class CsgoPersonDataset(data.Dataset):
             
         #apply transforms
         #TODO: farofa aqui hein
+=======
+                label = torch.zeros([1, 4], dtype=torch.float)
+                label[label == 0] = -1
+
+            sample = {'image': img, 'label': label}
+
+        # apply transforms
+        # TODO: farofa aqui hein
+>>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
         if self.transform:
             img = self.transform(sample['image'])
             # img = img.reshape(172800)
@@ -114,6 +127,7 @@ class CsgoPersonDataset(data.Dataset):
 
         return sample
 
+<<<<<<< HEAD
 class CsgoClassificationDataset(data.Dataset):
     """
     Dataset extracts image label pairs from multiple folders and applies transforms to image.
@@ -192,11 +206,16 @@ class CsgoClassificationDataset(data.Dataset):
         return sample
 
 #defining NN layeres
+=======
+
+# defining NN layeres
+>>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
         # self.fc0 = nn.BatchNorm1d(num_features=3*320*180)
+<<<<<<< HEAD
         self.fc1 = nn.Linear(3*320*180, 500)
         self.fc2 = nn.Linear(500, 1000)
         self.fc3 = nn.Linear(1000, 500)
@@ -205,6 +224,20 @@ class Net(nn.Module):
 
     def forward(self, x):
         print(np.shape(x))
+=======
+        self.conv1 = nn.Conv2d(3, 16, 5)
+        self.conv2 = nn.Conv2d(16, 32, 5)
+        self.mp = nn.MaxPool2d(2)
+        self.fc1 = nn.Linear(15872 * 136, 10)
+        self.fc2 = nn.Linear(10, 4)
+
+    def forward(self, x):
+        print(np.shape(x))
+        # x = self.fc0(x)
+        x = F.relu(self.conv1(x))
+        x = self.conv2(x)
+        x = x.view(-1, 15872 * 136)
+>>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
@@ -212,7 +245,8 @@ class Net(nn.Module):
         x = self.fc7(x)
         return x
 
-#runs NN in training mode
+
+# runs NN in training mode
 def train_run(train_loader, criterion, optimizer, device):
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
@@ -220,7 +254,7 @@ def train_run(train_loader, criterion, optimizer, device):
         for i, data in enumerate(train_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
-            #sends batch to gpu
+            # sends batch to gpu
             inputs, labels = inputs.to(device), labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -262,9 +296,9 @@ train_split = int(np.floor(dataset_len * train_split))
 test_split = int(np.floor(dataset_len * test_split))
 while train_split + test_split != dataset_len:
     train_split += 1
-train_set, test_set = torch.utils.data.random_split(\
+train_set, test_set = torch.utils.data.random_split( \
     dataset, [train_split, test_split])
-    
+
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
 test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, num_workers=4)
 
