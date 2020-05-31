@@ -100,9 +100,9 @@ while success:
         break
  
 cv2.destroyAllWindows()
-with open(output_path_root + ".txt", "w") as file:
-    file.write("%s"%(ones_zeros))
 
+# with open(output_path_root + ".txt", "w") as file:
+#     file.write("%s"%(ones_zeros))
 # ones_zeros = np.genfromtxt("/home/igor/mlprojects/Csgo-NeuralNetwork/output/CSGOraw2.txt", delimiter=",", dtype = int)
 # ones_zeros = list(ones_zeros)
 
