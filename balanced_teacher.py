@@ -8,9 +8,9 @@ from random import randint
 
 #variable settings
 output_path = 'output'  
-video_path = "/home/igor/Documents/csgofootage/CSGOraw2.mp4"
+video_path = "/home/igor/Documents/csgofootage/CSGOraw4.mp4"
 samplerate = 1 #video capture framerate
-detectionrate = 100 #neural-network passthrogh rate
+detectionrate = 2 #neural-network passthrogh rate
 seed(42)
 
 #setting device etc.
@@ -28,7 +28,7 @@ os.mkdir(output_path_root)
     
 ones_zeros = []
 
-def select_zeros(ones_zeros, random=True):
+def select_zeros(ones_zeros, absolute_frames, random=True):
     one_count = ones_zeros.count(1)
     zeros_idx = []
     if one_count == 0:
@@ -37,7 +37,7 @@ def select_zeros(ones_zeros, random=True):
     if random:
         for i in range(one_count):
             idx = randint(0, len(ones_zeros)-1)
-            while ones_zeros[idx] == 1 or ones_zeros[idx] == 2:
+            while ones_zeros[idx] == 1 or ones_zeros[idx] == 2 or idx > absolute_frames:
                 idx = randint(0, len(ones_zeros)-1)
             zeros_idx.append(idx)
         return  zeros_idx
@@ -106,7 +106,7 @@ cv2.destroyAllWindows()
 # ones_zeros = np.genfromtxt("/home/igor/mlprojects/Csgo-NeuralNetwork/output/CSGOraw2.txt", delimiter=",", dtype = int)
 # ones_zeros = list(ones_zeros)
 
-zeros_idx = select_zeros(ones_zeros)
+zeros_idx = select_zeros(ones_zeros, absolute_frames)
 
 for zero in zeros_idx:
     output_path = output_path_root

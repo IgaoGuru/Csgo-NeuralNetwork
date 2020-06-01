@@ -18,7 +18,7 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 test_split = 0.3
-num_epochs = 2
+num_epochs = 20
 batch_size = 5
 
 if torch.cuda.is_available():
@@ -29,14 +29,8 @@ else:
     print('running on: CPU')
 
 
-<<<<<<< HEAD
-
-    """Dataset that accesses multiple folders containing images and labels,
-    apllies transforms and creates image:label dictionary pairs."""
-=======
 class CsgoPersonDataset(data.Dataset):
     """preety description."""
->>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
 
     length = -1
 
@@ -103,15 +97,6 @@ class CsgoPersonDataset(data.Dataset):
                 label_shape = np.shape(label)
             # if file is blank (no data in the image), create -1 matrix
             else:
-<<<<<<< HEAD
-                label = torch.zeros([1, 4], dtype=torch.long)
-                label[label==0] = -1
-            
-            sample = {'image':img, 'label':label}
-            
-        #apply transforms
-        #TODO: farofa aqui hein
-=======
                 label = torch.zeros([1, 4], dtype=torch.float)
                 label[label == 0] = -1
 
@@ -119,23 +104,21 @@ class CsgoPersonDataset(data.Dataset):
 
         # apply transforms
         # TODO: farofa aqui hein
->>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
         if self.transform:
             img = self.transform(sample['image'])
-            # img = img.reshape(172800)
+            img = img.reshape(172800)
             sample['image'] = img
 
         return sample
 
-<<<<<<< HEAD
 class CsgoClassificationDataset(data.Dataset):
     """
     Dataset extracts image label pairs from multiple folders and applies transforms to image.
     if labels are empty: creates 
 
-    label format ==> [likelyhood there is a person, likelyhood there is no person]
-                    so either [1, 0] if there is a person
-                    or [0, 1] if there is none.
+    label format ==> [likelyhood there is a person]
+                    so either [1] if there is a person
+                    or [0] if there is none.
     """
     
     length = -1
@@ -200,58 +183,60 @@ class CsgoClassificationDataset(data.Dataset):
         #TODO: farofa aqui hein
         if self.transform:
             img = self.transform(sample['image'])
-            img = img.reshape(172800)
+            # img = img.reshape(172800)
             sample['image'] = img
 
         return sample
 
 #defining NN layeres
-=======
-
-# defining NN layeres
->>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        # self.fc0 = nn.BatchNorm1d(num_features=3*320*180)
-<<<<<<< HEAD
-        self.fc1 = nn.Linear(3*320*180, 500)
-        self.fc2 = nn.Linear(500, 1000)
-        self.fc3 = nn.Linear(1000, 500)
-        self.fc4 = nn.Linear(500, 100)
-        self.fc7 = nn.Linear(100, 2)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=256, kernel_size=5, stride=1, padding=2)
+        self.bn1 = nn.BatchNorm2d(num_features=256)
+        self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv2 = nn.Conv2d(in_channels=256, out_channels=32, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(num_features=32)
+        self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.last_linear = nn.Linear(in_features=32 * 80 * 45, out_features=2)
 
     def forward(self, x):
-        print(np.shape(x))
-=======
-        self.conv1 = nn.Conv2d(3, 16, 5)
-        self.conv2 = nn.Conv2d(16, 32, 5)
-        self.mp = nn.MaxPool2d(2)
-        self.fc1 = nn.Linear(15872 * 136, 10)
-        self.fc2 = nn.Linear(10, 4)
+        # X comes in with shape(batch_size, 3, 320, 180)
+        x = self.conv1(x)
+        # After conv1 goes to shape (batch_size, 256, 320, 180)
+        x = self.bn1(x)
+        # After bn1 goes to the same shape (batch_size, 256, 320, 180)
+        x = self.mp1(x)
+        # After mp1 goes to the same shape (batch_size, 256, 160, 90)
+        x = F.relu(x)
+        # After relu it does not change shape (activations do not change shape)
 
-    def forward(self, x):
-        print(np.shape(x))
-        # x = self.fc0(x)
-        x = F.relu(self.conv1(x))
         x = self.conv2(x)
-        x = x.view(-1, 15872 * 136)
->>>>>>> 91d8d0a7450c4df93372b5307c199b0de1bd98d7
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        x = self.fc7(x)
+        # After conv2 goes to shape (batch_size, 32, 160, 90)
+        x = self.bn2(x)
+        # After bn2 goes to shape (batch_size, 32, 160, 90)
+        x = self.mp2(x)
+        # After mp2 goes to shape (batch_size, 32, 80, 45)
+        x = F.relu(x)
+        # After relu it does not change shape (activations do not change shape)
+
+        x = x.view(-1, 32 * 80 * 45)
+        # After this view, it goes to shape (batch_size, 115200)
+        x = self.last_linear(x)
+        # After last_linear, it goes to shape (batch_size, 2)
         return x
 
 
 # runs NN in training mode
 def train_run(train_loader, criterion, optimizer, device):
+    loss_record = []
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
-        for i, data in enumerate(train_loader, 0):
+        for i, data in enumerate(train_loader):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
             # sends batch to gpu
@@ -264,8 +249,8 @@ def train_run(train_loader, criterion, optimizer, device):
             loss = criterion(outputs, labels)
 
             print(loss.item())
-            print(outputs)
             # print(labels)
+            loss_record.append(loss.item())
 
             loss.backward(create_graph=False)
 
@@ -278,7 +263,8 @@ def train_run(train_loader, criterion, optimizer, device):
             #     running_loss = 0.0
 
     print('Finished Training')
-
+    plt.plot(loss_record)
+    plt.show()
 
 net = Net().to(device)
 

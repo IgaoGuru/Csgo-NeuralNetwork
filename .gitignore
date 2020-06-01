@@ -11,3 +11,4 @@ boot
 .vscode
 __pycache__
 *.pyc
+SimpleConvNet.py
