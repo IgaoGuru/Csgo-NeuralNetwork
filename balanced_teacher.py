@@ -8,7 +8,7 @@ from random import randint
 
 #variable settings
 output_path = 'output'  
-video_path = "/home/igor/Documents/csgofootage/CSGOraw4.mp4"
+video_path = "/home/igor/Documents/csgofootage/CSGOraw7.mp4"
 samplerate = 1 #video capture framerate
 detectionrate = 2 #neural-network passthrogh rate
 seed(42)

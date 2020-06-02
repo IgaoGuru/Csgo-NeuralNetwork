@@ -15,12 +15,19 @@ import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
 
+torch.manual_seed(42)
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 test_split = 0.3
 num_epochs = 25
 batch_size =  5
+##dataset ---------------
+dict_override = False
+##optimizer -------------
+lr = 0.001
+momentum = 0.5
+
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -62,7 +69,6 @@ class CsgoPersonDataset(data.Dataset):
 
     # returns name of folder that contains specific frame
     def find_folder(self, idx):
-        print(idx)
         for num_frames in self.folder_system:
             if num_frames >= idx:
                 return (str(self.folder_system[num_frames]), str(num_frames))
@@ -125,7 +131,7 @@ class CsgoClassificationDataset(data.Dataset):
     
     length = -1
 
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, dict_override = False):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -137,13 +143,20 @@ class CsgoClassificationDataset(data.Dataset):
         self.length = 0
         #dictionary that marks what the last frame of each folder is
         #ie. number of examples in specific folder
-        self.folder_system = {}
 
-        for folder in os.listdir(dataset_path):
-            folder_len  = 0
-            for file in os.listdir(dataset_path + folder):
-                folder_len += 1
-            self.folder_system[int((folder_len/2)-1)] = '%s'%(folder)
+        if dict_override:
+            self.folder_system = {2072:'CSGOraw1',
+                                2096: 'CSGOraw3',
+                                3656: 'CSGOraw4',
+                                2500: 'CSGOraw7'}
+
+        else:
+            self.folder_system = {}
+            for folder in os.listdir(dataset_path):
+                folder_len  = 0
+                for file in os.listdir(dataset_path + folder):
+                    folder_len += 1
+                self.folder_system[int((folder_len/2)-1)] = '%s'%(folder)
 
         for folder_len in self.folder_system:
             self.length += folder_len
@@ -294,7 +307,7 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-dataset = CsgoClassificationDataset(dataset_path, transform)
+dataset = CsgoClassificationDataset(dataset_path, transform, dict_override=dict_override)
 
 dataset_len = len(dataset)
 
@@ -310,7 +323,7 @@ test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, 
 
 criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(net.parameters())
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.5)
+optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
 # for i in range(500):
 #     image, label = dataset[i]['image'], dataset[i]['label']
