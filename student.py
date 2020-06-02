@@ -1,5 +1,6 @@
 # TODO: use only one (RGB) channel
 import numpy as np
+from math import ceil
 import os
 from torch.utils import data
 from torch.utils.data.dataloader import DataLoader as DataLoader
@@ -18,8 +19,8 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 test_split = 0.3
-num_epochs = 20
-batch_size = 5
+num_epochs = 25
+batch_size =  5
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -61,9 +62,10 @@ class CsgoPersonDataset(data.Dataset):
 
     # returns name of folder that contains specific frame
     def find_folder(self, idx):
+        print(idx)
         for num_frames in self.folder_system:
             if num_frames >= idx:
-                return str(self.folder_system[num_frames])
+                return (str(self.folder_system[num_frames]), str(num_frames))
             else:
                 idx = idx - num_frames
 
@@ -75,7 +77,7 @@ class CsgoPersonDataset(data.Dataset):
             idx = idx.tolist()
 
         # sets path and gets txt/jpg files
-        img_path = self.find_folder(idx)
+        img_path, idx = self.find_folder(idx)
         img_name = "%sframe#%s" % (img_path, idx)
         img_path = os.path.join(self.root_dir,
                                 img_path, img_name)
@@ -141,18 +143,18 @@ class CsgoClassificationDataset(data.Dataset):
             folder_len  = 0
             for file in os.listdir(dataset_path + folder):
                 folder_len += 1
-            self.folder_system[folder_len] = '%s'%(folder)
+            self.folder_system[int((folder_len/2)-1)] = '%s'%(folder)
 
         for folder_len in self.folder_system:
             self.length += folder_len
-        self.length = int(self.length / 2)
+        self.length = self.length
         print(self.length)
         
     #returns name of folder that contains specific frame
     def find_folder(self, idx):
         for num_frames in self.folder_system:
             if num_frames >= idx:
-                return str(self.folder_system[num_frames])
+                return (str(self.folder_system[num_frames]), str(idx))
             else:
                 idx = idx - num_frames
 
@@ -164,7 +166,7 @@ class CsgoClassificationDataset(data.Dataset):
             idx = idx.tolist()
 
         #sets path and gets txt/jpg files
-        img_path = self.find_folder(idx)
+        img_path, idx = self.find_folder(idx)
         img_name = "%sframe#%s" % (img_path, idx)
         img_path = os.path.join(self.root_dir,
                                 img_path, img_name)
@@ -187,6 +189,14 @@ class CsgoClassificationDataset(data.Dataset):
             sample['image'] = img
 
         return sample
+
+def binary_acc(y_pred, y_test):
+    y_pred_tag = torch.log_softmax(y_pred, dim = 1)
+    _, y_pred_tags = torch.max(y_pred_tag, dim = 1)
+    correct_results_sum = (y_pred_tags == y_test).sum().float()
+    acc = correct_results_sum/y_test.shape[0]
+    acc = torch.round(acc * 100)
+    return acc
 
 #defining NN layeres
 class Net(nn.Module):
@@ -232,38 +242,48 @@ class Net(nn.Module):
 
 # runs NN in training mode
 def train_run(train_loader, criterion, optimizer, device):
-    loss_record = []
+    train_losses = []
+    train_accs = []
+    print(len(train_loader.dataset))
+    log_interval = 10
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         running_loss = 0.0
+        running_acc = 0.0
         for i, data in enumerate(train_loader):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
-            # sends batch to gpu
+            #if labels[0].item() == -1:
+            #    continue
+            #sends batch to gpu
             inputs, labels = inputs.to(device), labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-
             # forward + backward + optimize
             outputs = net(inputs)
+
             loss = criterion(outputs, labels)
+            train_losses.append(loss.item())
+            running_loss += loss.item()
 
-            print(loss.item())
-            # print(labels)
-            loss_record.append(loss.item())
+            acc = binary_acc(outputs, labels)
 
-            loss.backward(create_graph=False)
+            running_acc += acc
+            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
+                print('[%d, %5d] loss: %.5f acc: %.0f' %
+                      (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
+                train_losses.append(running_loss / log_interval)
+                train_accs.append(running_acc / log_interval)
+                running_loss = 0.0
+                running_acc = 0.0
 
+            loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
-            # if i % 2000 == 1999:    # print every 2000 mini-batches
-            #     print('[%d, %5d] loss: %.3f' %
-            #           (epoch + 1, i + 1, running_loss / 2000))
-            #     running_loss = 0.0
-
     print('Finished Training')
-    plt.plot(loss_record)
+    return train_losses, train_accs
+    plt.plot(train_losses)
+    plt.plot(train_accs)
     plt.show()
 
 net = Net().to(device)
@@ -290,7 +310,7 @@ test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, 
 
 criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(net.parameters())
-optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
+optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.5)
 
 # for i in range(500):
 #     image, label = dataset[i]['image'], dataset[i]['label']
