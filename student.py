@@ -14,14 +14,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-
+from time import time
+import pickle
 torch.manual_seed(42)
+
+#CONTROL PANEL -------------
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
+model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.7
-test_split = 0.3
+train_split = 0.0005
+test_split = 0.9995
 num_epochs = 25
 batch_size =  5
+save = True
 ##dataset ---------------
 dict_override = False
 ##optimizer -------------
@@ -36,6 +41,9 @@ else:
     device = torch.device("cpu")
     print('running on: CPU')
 
+n_files = 0
+for file in os.listdir(model_save_path):
+    n_files += 1
 
 class CsgoPersonDataset(data.Dataset):
     """preety description."""
@@ -254,7 +262,10 @@ class Net(nn.Module):
 
 
 # runs NN in training mode
-def train_run(train_loader, criterion, optimizer, device):
+def train_run(train_loader, criterion, optimizer, device, save = True):
+    if save == False:
+        print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
+    tic = time()
     train_losses = []
     train_accs = []
     print(len(train_loader.dataset))
@@ -293,7 +304,15 @@ def train_run(train_loader, criterion, optimizer, device):
             loss.backward()
             optimizer.step()
 
-    print('Finished Training')
+    if save == True:
+        print('saving state...')
+        fname = 'model#%s'%(n_files)
+        torch.save(net, fname)
+        os.replace(fname, model_save_path+'/'+fname)
+
+    toc = time()
+    toc = toc - tic
+    print('Finished Training, elapsed time: %s seconds'%(int(toc)))
     return train_losses, train_accs
     plt.plot(train_losses)
     plt.plot(train_accs)
@@ -325,8 +344,4 @@ criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(net.parameters())
 optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
-# for i in range(500):
-#     image, label = dataset[i]['image'], dataset[i]['label']
-#     print(label)
-
-train_run(train_loader, criterion, optimizer, device)
+train_run(train_loader, criterion, optimizer, device, save=save)
