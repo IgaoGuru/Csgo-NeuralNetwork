@@ -22,8 +22,8 @@ torch.manual_seed(42)
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.0005
-test_split = 0.9995
+train_split = 0.009
+test_split = 0.991
 num_epochs = 25
 batch_size =  5
 save = True
@@ -44,6 +44,7 @@ else:
 n_files = 0
 for file in os.listdir(model_save_path):
     n_files += 1
+n_files = int((n_files/2))
 
 class CsgoPersonDataset(data.Dataset):
     """preety description."""
@@ -263,15 +264,18 @@ class Net(nn.Module):
 
 # runs NN in training mode
 def train_run(train_loader, criterion, optimizer, device, save = True):
+
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
     tic = time()
+    train_inference = []
     train_losses = []
     train_accs = []
     print(len(train_loader.dataset))
     log_interval = 10
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
+        running_inference = 0.0
         running_loss = 0.0
         running_acc = 0.0
         for i, data in enumerate(train_loader):
@@ -284,10 +288,80 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
             # zero the parameter gradients
             optimizer.zero_grad()
             # forward + backward + optimize
+            inferecence_start = time()
             outputs = net(inputs)
+            inference = time() - inferecence_start
 
             loss = criterion(outputs, labels)
-            train_losses.append(loss.item())
+            # train_losses.append(loss.item())
+            running_loss += loss.item()
+
+            acc = binary_acc(outputs, labels)
+            running_acc += acc
+
+            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
+                print('[%d, %5d] loss: %.5f acc: %.0f' %
+                      (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
+                for i in range(log_interval):
+                    train_inference.append(running_inference / log_interval)
+                    train_losses.append(running_loss / log_interval)
+                    train_accs.append(running_acc / log_interval)
+                running_inference = 0.0
+                running_loss = 0.0
+                running_acc = 0.0
+
+            loss.backward()
+            optimizer.step()
+
+    toc = time()
+    toc = toc - tic
+    print('Finished Training, elapsed time: %s seconds'%(int(toc)))
+
+    if save == True:
+        print('saving state...')
+        fname = 'model#%s'%(n_files)
+        torch.save(net, fname)
+        os.replace(fname, model_save_path+'/'+fname)
+        #BUG: unicode decode error
+        with open(model_save_path+'/'+fname+'p', 'wb') as file:
+            to_dump = {
+                'inference' : running_inference,
+                'losses' : train_losses,
+                'accuracy' : train_accs,
+                'runtime' : toc}
+            pickle.dump(to_dump, file)
+
+    return train_losses, train_accs
+
+#runs NN in testing mode
+def test_run(test_loader, criterion, device, save = True):
+    if save == False:
+        print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
+    tic = time()
+    test_losses = []
+    test_accs = []
+    print(len(train_loader.dataset))
+    log_interval = 10
+    for epoch in range(num_epochs):  # loop over the dataset multiple times
+
+        running_loss = 0.0
+        running_acc = 0.0
+        for i, data in enumerate(test_loader):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data['image'], data['label']
+            #if labels[0].item() == -1:
+            #    continue
+            #sends batch to gpu
+            inputs, labels = inputs.to(device), labels.to(device)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+            # forward + backward + optimize
+            inferecence_start = time()
+            outputs = net(inputs)
+            inference = time() - inferecence_start
+
+            loss = criterion(outputs, labels)
+            test_losses.append(loss.item())
             running_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
@@ -296,13 +370,12 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.5f acc: %.0f' %
                       (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
-                train_losses.append(running_loss / log_interval)
-                train_accs.append(running_acc / log_interval)
+                test_losses.append(running_loss / log_interval)
+                test_accs.append(running_acc / log_interval)
                 running_loss = 0.0
                 running_acc = 0.0
 
-            loss.backward()
-            optimizer.step()
+            net.eval()
 
     if save == True:
         print('saving state...')
@@ -313,10 +386,8 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
     toc = time()
     toc = toc - tic
     print('Finished Training, elapsed time: %s seconds'%(int(toc)))
-    return train_losses, train_accs
-    plt.plot(train_losses)
-    plt.plot(train_accs)
-    plt.show()
+    return test_losses, test_accs
+
 
 net = Net().to(device)
 
@@ -344,4 +415,13 @@ criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(net.parameters())
 optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
-train_run(train_loader, criterion, optimizer, device, save=save)
+
+train_losses, train_accs = train_run(train_loader, criterion, optimizer, device, save=save)
+plt.plot(train_losses)
+plt.plot(train_accs)
+plt.show()
+
+# test_losses, test_accs = test_run(test_loader, criterion, device)
+# plt.plot(test_losses)
+# plt.plot(test_accs)
+# plt.show()
