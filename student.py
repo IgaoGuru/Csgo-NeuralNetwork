@@ -220,6 +220,21 @@ def binary_acc(y_pred, y_test):
     acc = torch.round(acc * 100)
     return acc
 
+def get_TFNP_classification(outputs, labels):
+    TP, TN, FP, FN = 0, 0, 0, 0
+
+    outputs = outputs.detach().cpu()
+    labels = labels.detach().cpu().numpy()
+    outputs = torch.softmax(outputs, dim=1)
+    outputs = np.argmax(outputs, axis=1)
+    outputs = outputs.numpy()
+
+    TP = np.logical_and(outputs, labels)
+    TN = np.logical_and(np.logical_not(outputs), np.logical_not(labels))
+    FP = np.logical_and(outputs, np.logical_not(labels))
+    FN = np.logical_and(np.logical_not(outputs), labels)
+    return int(TP[0]), int(TN[0]), int(FP[0]), int(FN[0])
+
 #defining NN layeres
 class Net(nn.Module):
     def __init__(self):
@@ -268,48 +283,61 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
     tic = time()
-    train_inference = []
+
+    train_inferences = []
     train_losses = []
     train_accs = []
+    train_tp, train_tn, train_fp, train_fn = 0, 0, 0, 0
+
     print(len(train_loader.dataset))
     log_interval = 10
+
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         running_inference = 0.0
         running_loss = 0.0
         running_acc = 0.0
         for i, data in enumerate(train_loader):
+
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
-            #if labels[0].item() == -1:
-            #    continue
+
             #sends batch to gpu
             inputs, labels = inputs.to(device), labels.to(device)
+
             # zero the parameter gradients
             optimizer.zero_grad()
-            # forward + backward + optimize
+            
+            # forward pass
             inferecence_start = time()
             outputs = net(inputs)
             inference = time() - inferecence_start
+            running_inference += inference
 
             loss = criterion(outputs, labels)
-            # train_losses.append(loss.item())
             running_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
             running_acc += acc
 
+            TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
+            train_tp += TP
+            train_tn += TN
+            train_fp += FP
+            train_fn += FN
+
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.5f acc: %.0f' %
                       (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
                 for i in range(log_interval):
-                    train_inference.append(running_inference / log_interval)
+                    train_inferences.append(running_inference / log_interval)
                     train_losses.append(running_loss / log_interval)
                     train_accs.append(running_acc / log_interval)
-                running_inference = 0.0
+                running_inferences = 0.0
                 running_loss = 0.0
                 running_acc = 0.0
 
+            #backprop + optimizer
             loss.backward()
             optimizer.step()
 
@@ -322,71 +350,101 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
         fname = 'model#%s'%(n_files)
         torch.save(net, fname)
         os.replace(fname, model_save_path+'/'+fname)
-        #BUG: unicode decode error
-        with open(model_save_path+'/'+fname+'p', 'wb') as file:
+        with open(model_save_path+'/'+fname+'r', 'wb') as file:
             to_dump = {
-                'inference' : running_inference,
+                'inferences' : train_inferences,
                 'losses' : train_losses,
                 'accuracy' : train_accs,
-                'runtime' : toc}
+                'runtime' : toc,
+                'tp':train_tp,
+                'tn':train_tn,
+                'fp':train_fp,
+                'fn':train_fn}
             pickle.dump(to_dump, file)
 
-    return train_losses, train_accs
+    return train_inferences, train_losses, train_accs
 
 #runs NN in testing mode
 def test_run(test_loader, criterion, device, save = True):
+
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
+
+    net.eval()
     tic = time()
+
+    test_inferences = []
     test_losses = []
     test_accs = []
-    print(len(train_loader.dataset))
+    test_tp, test_tn, test_fp, test_fn = 0, 0, 0, 0
+
+    print(len(test_loader.dataset))
     log_interval = 10
+
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
+        running_inference = 0.0
         running_loss = 0.0
         running_acc = 0.0
+
         for i, data in enumerate(test_loader):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
-            #if labels[0].item() == -1:
-            #    continue
+            
             #sends batch to gpu
             inputs, labels = inputs.to(device), labels.to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            # forward + backward + optimize
+
+            # forward pass + inference measure
             inferecence_start = time()
             outputs = net(inputs)
             inference = time() - inferecence_start
+            running_inference += inference
 
             loss = criterion(outputs, labels)
-            test_losses.append(loss.item())
             running_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
-
             running_acc += acc
+
+            TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
+            test_tp += TP
+            test_tn += TN
+            test_fp += FP
+            test_fn += FN
+
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.5f acc: %.0f' %
                       (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
-                test_losses.append(running_loss / log_interval)
-                test_accs.append(running_acc / log_interval)
+                for i in range(log_interval):
+                    test_inferences.append(running_inference / log_interval)
+                    test_losses.append(running_loss / log_interval)
+                    test_accs.append(running_acc / log_interval)
+                running_inferences = 0.0
                 running_loss = 0.0
                 running_acc = 0.0
 
-            net.eval()
+    toc = time()
+    toc = toc - tic
+    print('Finished Testing, elapsed time: %s seconds'%(int(toc)))
 
     if save == True:
         print('saving state...')
         fname = 'model#%s'%(n_files)
         torch.save(net, fname)
         os.replace(fname, model_save_path+'/'+fname)
+        with open(model_save_path+'/'+fname+'r', 'wb') as file:
+            to_dump = {
+                'inferences' : test_inferences,
+                'losses' : test_losses,
+                'accuracy' : test_accs,
+                'runtime' : toc,
+                'tp':test_tp,
+                'tn':test_tn,
+                'fp':test_fp,
+                'fn':test_fn}
+            pickle.dump(to_dump, file)
 
-    toc = time()
-    toc = toc - tic
-    print('Finished Training, elapsed time: %s seconds'%(int(toc)))
-    return test_losses, test_accs
+    return test_inferences, test_losses, test_accs
 
 
 net = Net().to(device)
@@ -416,12 +474,16 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
 
-train_losses, train_accs = train_run(train_loader, criterion, optimizer, device, save=save)
-plt.plot(train_losses)
-plt.plot(train_accs)
-plt.show()
+# train_inferences, train_losses, train_accs = train_run(\
+#     train_loader, criterion, optimizer, device, save=save)
 
-# test_losses, test_accs = test_run(test_loader, criterion, device)
-# plt.plot(test_losses)
-# plt.plot(test_accs)
+# plt.plot(train_inferences)
+# plt.plot(train_losses)
+# plt.plot(train_accs)
 # plt.show()
+
+test_inferences, test_losses, test_accs = test_run(test_loader, criterion, device)
+plt.plot(test_inferences)
+plt.plot(test_losses)
+plt.plot(test_accs)
+plt.show()
