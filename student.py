@@ -22,10 +22,11 @@ torch.manual_seed(42)
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.009
-test_split = 0.991
+train_split = 0.7
+val_split = 0.15
+test_split = 0.15
 num_epochs = 25
-batch_size =  5
+batch_size =  3
 save = True
 ##dataset ---------------
 dict_override = False
@@ -44,7 +45,7 @@ else:
 n_files = 0
 for file in os.listdir(model_save_path):
     n_files += 1
-n_files = int((n_files/2))
+n_files = int(np.ceil((n_files/2)))
 
 class CsgoPersonDataset(data.Dataset):
     """preety description."""
@@ -278,8 +279,7 @@ class Net(nn.Module):
 
 
 # runs NN in training mode
-def train_run(train_loader, criterion, optimizer, device, save = True):
-
+def train_run(criterion, optimizer, device, train_loader, val_loader=None, save = True):
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
     tic = time()
@@ -289,15 +289,21 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
     train_accs = []
     train_tp, train_tn, train_fp, train_fn = 0, 0, 0, 0
 
+    val_losses = []
+    val_accs = []
+
     print(len(train_loader.dataset))
     log_interval = 10
 
+    num_batches_train = len(train_loader)
+    num_batches_val = len(val_loader)
+
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
-        running_inference = 0.0
-        running_loss = 0.0
-        running_acc = 0.0
+        running_inference, running_loss_log, running_acc_log = 0.0, 0.0, 0.0
+
         for i, data in enumerate(train_loader):
+            running_loss, running_acc = 0.0, 0.0
 
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
@@ -315,9 +321,11 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
             running_inference += inference
 
             loss = criterion(outputs, labels)
+            running_loss_log += loss.item()
             running_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
+            running_acc_log += acc
             running_acc += acc
 
             TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
@@ -326,20 +334,46 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
             train_fp += FP
             train_fn += FN
 
-            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
-                print('[%d, %5d] loss: %.5f acc: %.0f' %
-                      (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
-                for i in range(log_interval):
-                    train_inferences.append(running_inference / log_interval)
-                    train_losses.append(running_loss / log_interval)
-                    train_accs.append(running_acc / log_interval)
-                running_inferences = 0.0
-                running_loss = 0.0
-                running_acc = 0.0
-
             #backprop + optimizer
             loss.backward()
             optimizer.step()
+
+            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
+                print('training: [%d, %5d] loss: %.5f acc: %.0f' %
+                (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
+                running_loss, running_acc = 0.0, 0.0
+
+        train_inferences.append(running_inference / num_batches_train)
+        train_losses.append(running_loss / num_batches_train)
+        train_accs.append(running_acc / num_batches_train)
+
+        running_val_loss_log, running_val_acc_log = 0.0
+        #validation run
+        for i, data in enumerate(val_loader):
+            running_val_loss, running_val_acc = 0.0
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data['image'], data['label']
+            #sends batch to gpu
+            inputs, labels = inputs.to(device), labels.to(device)
+            #run NN
+            outputs = net(inputs)
+
+            loss = criterion(outputs, labels)
+            running_val_loss_log += loss.item()
+            running_val_loss += loss.item()
+
+            acc = binary_acc(outputs, labels)
+            running_val_acc_log += acc
+            running_val_acc += acc
+            
+            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
+                print('validation: [%d, %5d] loss: %.5f acc: %.0f' %
+                (epoch + 1, i + 1, running_val_loss / log_interval, running_val_acc / log_interval))
+                running_val_loss, running_val_acc = 0.0
+        
+        val_losses.append(running_val_loss_log / num_batches_val)
+        val_accs.append(running_val_acc_log / num_batches_val)
+
 
     toc = time()
     toc = toc - tic
@@ -350,6 +384,8 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
         fname = 'model#%s'%(n_files)
         torch.save(net, fname)
         os.replace(fname, model_save_path+'/'+fname)
+
+        #saving stats
         with open(model_save_path+'/'+fname+'r', 'wb') as file:
             to_dump = {
                 'inferences' : train_inferences,
@@ -360,12 +396,15 @@ def train_run(train_loader, criterion, optimizer, device, save = True):
                 'tn':train_tn,
                 'fp':train_fp,
                 'fn':train_fn}
+            if val_loader != None:
+                to_dump['val_losses'] = val_losses
+                to_dump['val_accs'] = val_accs
             pickle.dump(to_dump, file)
 
-    return train_inferences, train_losses, train_accs
+    return train_inferences, train_losses, train_accs, val_losses, val_accs
 
 #runs NN in testing mode
-def test_run(test_loader, criterion, device, save = True):
+def test_run(criterion, device, test_loader, save = True):
 
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
@@ -380,6 +419,7 @@ def test_run(test_loader, criterion, device, save = True):
 
     print(len(test_loader.dataset))
     log_interval = 10
+    num_batches = len(test_loader)
 
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
@@ -414,14 +454,11 @@ def test_run(test_loader, criterion, device, save = True):
 
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.5f acc: %.0f' %
-                      (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
-                for i in range(log_interval):
-                    test_inferences.append(running_inference / log_interval)
-                    test_losses.append(running_loss / log_interval)
-                    test_accs.append(running_acc / log_interval)
-                running_inferences = 0.0
-                running_loss = 0.0
-                running_acc = 0.0
+                      (epoch + 1, i + 1, running_loss / (i+1), running_acc / (i+1)))
+        
+        test_inferences.append(running_inference / num_batches)
+        test_losses.append(running_loss / num_batches)
+        test_accs.append(running_acc / num_batches)
 
     toc = time()
     toc = toc - tic
@@ -432,7 +469,7 @@ def test_run(test_loader, criterion, device, save = True):
         fname = 'model#%s'%(n_files)
         torch.save(net, fname)
         os.replace(fname, model_save_path+'/'+fname)
-        with open(model_save_path+'/'+fname+'r', 'wb') as file:
+        with open(model_save_path+'/'+fname+'t', 'wb') as file:
             to_dump = {
                 'inferences' : test_inferences,
                 'losses' : test_losses,
@@ -460,30 +497,34 @@ dataset = CsgoClassificationDataset(dataset_path, transform, dict_override=dict_
 dataset_len = len(dataset)
 
 train_split = int(np.floor(dataset_len * train_split))
+val_split = int(np.floor(dataset_len * val_split))
 test_split = int(np.floor(dataset_len * test_split))
-while train_split + test_split != dataset_len:
+while train_split + val_split + test_split != dataset_len:
     train_split += 1
-train_set, test_set = torch.utils.data.random_split( \
-    dataset, [train_split, test_split])
+train_set, val_set, test_set = torch.utils.data.random_split( \
+    dataset, [train_split, val_split, test_split])
 
 train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, num_workers=4)
-test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=True, num_workers=4)
+val_loader =   DataLoader(dataset = val_set, batch_size=batch_size, shuffle=True, num_workers=4)
+test_loader =  DataLoader(dataset=test_set,  batch_size=batch_size, shuffle=True, num_workers=4)
 
 criterion = nn.CrossEntropyLoss()
 # optimizer = optim.Adam(net.parameters())
 optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
 
-# train_inferences, train_losses, train_accs = train_run(\
-#     train_loader, criterion, optimizer, device, save=save)
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
 
-# plt.plot(train_inferences)
-# plt.plot(train_losses)
-# plt.plot(train_accs)
-# plt.show()
-
-test_inferences, test_losses, test_accs = test_run(test_loader, criterion, device)
-plt.plot(test_inferences)
-plt.plot(test_losses)
-plt.plot(test_accs)
+plt.plot(train_inferences)
+plt.plot(train_losses)
+plt.plot(train_accs)
+plt.plot(val_losses)
+plt.plot(val_accs)
 plt.show()
+
+# test_inferences, test_losses, test_accs = test_run(criterion, device, test_loader, save=save)
+# plt.plot(test_inferences)
+# plt.plot(test_losses)
+# plt.plot(test_accs)
+# plt.show()

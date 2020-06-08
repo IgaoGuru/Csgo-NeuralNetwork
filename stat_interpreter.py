@@ -31,4 +31,6 @@ with open(file_path, 'rb') as file:
     print('tp: %s, tn: %s, fp: %s, fn: %s (percentages) \n'%(tp, tn, fp, fn))
     print('correct = %s, incorrect = %s \n'%((tp + tn), (fp + fn)))
 
+    print(accs[30000:])
+
     plt.show()
