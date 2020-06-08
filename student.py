@@ -25,7 +25,7 @@ model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 train_split = 0.7
 val_split = 0.15
 test_split = 0.15
-num_epochs = 25
+num_epochs = 85
 batch_size =  3
 save = True
 ##dataset ---------------
@@ -300,10 +300,9 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
 
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
-        running_inference, running_loss_log, running_acc_log = 0.0, 0.0, 0.0
+        running_inference, running_loss, running_acc = 0.0, 0.0, 0.0
 
         for i, data in enumerate(train_loader):
-            running_loss, running_acc = 0.0, 0.0
 
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
@@ -321,11 +320,9 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
             running_inference += inference
 
             loss = criterion(outputs, labels)
-            running_loss_log += loss.item()
             running_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
-            running_acc_log += acc
             running_acc += acc
 
             TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
@@ -339,15 +336,14 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
             optimizer.step()
 
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
-                print('training: [%d, %5d] loss: %.5f acc: %.0f' %
-                (epoch + 1, i + 1, running_loss / log_interval, running_acc / log_interval))
-                running_loss, running_acc = 0.0, 0.0
+                print('training: [%d, %5d] loss: %.5f acc: %.0f'%\
+                    (epoch + 1, i + 1, (running_loss / (i+1)), running_acc / (i+1)))
 
         train_inferences.append(running_inference / num_batches_train)
         train_losses.append(running_loss / num_batches_train)
         train_accs.append(running_acc / num_batches_train)
 
-        running_val_loss_log, running_val_acc_log = 0.0
+        running_val_loss, running_val_acc = 0.0
         #validation run
         for i, data in enumerate(val_loader):
             running_val_loss, running_val_acc = 0.0
@@ -359,20 +355,17 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
             outputs = net(inputs)
 
             loss = criterion(outputs, labels)
-            running_val_loss_log += loss.item()
             running_val_loss += loss.item()
 
             acc = binary_acc(outputs, labels)
-            running_val_acc_log += acc
             running_val_acc += acc
             
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
-                print('validation: [%d, %5d] loss: %.5f acc: %.0f' %
-                (epoch + 1, i + 1, running_val_loss / log_interval, running_val_acc / log_interval))
-                running_val_loss, running_val_acc = 0.0
-        
-        val_losses.append(running_val_loss_log / num_batches_val)
-        val_accs.append(running_val_acc_log / num_batches_val)
+                print('validation: [%d, %5d] loss: %.5f acc: %.0f'%\
+                    (epoch + 1, i + 1, (running_val_loss / (i+1)), running_val_acc / (i+1)))
+
+        val_losses.append(running_val_loss / num_batches_val)
+        val_accs.append(running_val_acc / num_batches_val)
 
 
     toc = time()
@@ -423,9 +416,7 @@ def test_run(criterion, device, test_loader, save = True):
 
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
-        running_inference = 0.0
-        running_loss = 0.0
-        running_acc = 0.0
+        running_inference, running_loss, running_acc = 0.0, 0.0, 0.0
 
         for i, data in enumerate(test_loader):
             # get the inputs; data is a list of [inputs, labels]
@@ -454,7 +445,7 @@ def test_run(criterion, device, test_loader, save = True):
 
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.5f acc: %.0f' %
-                      (epoch + 1, i + 1, running_loss / (i+1), running_acc / (i+1)))
+                      (epoch + 1, i + 1, (running_loss / (i+1)), running_acc / (i+1)))
         
         test_inferences.append(running_inference / num_batches)
         test_losses.append(running_loss / num_batches)
