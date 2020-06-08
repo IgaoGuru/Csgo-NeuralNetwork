@@ -22,10 +22,10 @@ torch.manual_seed(42)
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.7
-val_split = 0.15
-test_split = 0.15
-num_epochs = 85
+train_split = 0.1
+val_split = 0.1
+test_split = 0.8
+num_epochs = 2
 batch_size =  3
 save = True
 ##dataset ---------------
@@ -343,10 +343,9 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
         train_losses.append(running_loss / num_batches_train)
         train_accs.append(running_acc / num_batches_train)
 
-        running_val_loss, running_val_acc = 0.0
+        running_val_loss, running_val_acc = 0.0, 0.0
         #validation run
         for i, data in enumerate(val_loader):
-            running_val_loss, running_val_acc = 0.0
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data['image'], data['label']
             #sends batch to gpu
