@@ -22,10 +22,10 @@ torch.manual_seed(42)
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.1
-val_split = 0.1
-test_split = 0.8
-num_epochs = 2
+train_split = 0.7
+val_split = 0.15
+test_split = 0.15
+num_epochs = 25
 batch_size =  3
 save = True
 ##dataset ---------------
@@ -380,6 +380,10 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
         #saving stats
         with open(model_save_path+'/'+fname+'r', 'wb') as file:
             to_dump = {
+                'type' : 'training',
+                'lr' : lr,
+                'momentum' : momentum,
+                'epochs' : num_epochs,
                 'inferences' : train_inferences,
                 'losses' : train_losses,
                 'accuracy' : train_accs,
@@ -452,7 +456,7 @@ def test_run(criterion, device, test_loader, save = True):
 
     toc = time()
     toc = toc - tic
-    print('Finished Testing, elapsed time: %s seconds'%(int(toc)))
+    print('Finished Testing, elapsed time: %s seconds'%(int(toc))) 
 
     if save == True:
         print('saving state...')
@@ -461,6 +465,10 @@ def test_run(criterion, device, test_loader, save = True):
         os.replace(fname, model_save_path+'/'+fname)
         with open(model_save_path+'/'+fname+'t', 'wb') as file:
             to_dump = {
+                'type' : 'testing',
+                'lr' : lr,
+                'momentum' : momentum,
+                'epochs' : num_epochs,
                 'inferences' : test_inferences,
                 'losses' : test_losses,
                 'accuracy' : test_accs,
