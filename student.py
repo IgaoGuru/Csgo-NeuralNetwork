@@ -21,12 +21,13 @@ torch.manual_seed(42)
 #CONTROL PANEL -------------
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
+net_path = None #specify path to load specific network
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
 train_split = 0.7
 val_split = 0.15
 test_split = 0.15
 num_epochs = 25
-batch_size =  3
+batch_size =  1
 save = True
 ##dataset ---------------
 dict_override = False
@@ -236,6 +237,11 @@ def get_TFNP_classification(outputs, labels):
     FN = np.logical_and(np.logical_not(outputs), labels)
     return int(TP[0]), int(TN[0]), int(FP[0]), int(FN[0])
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1 or classname.find('Linear') != -1:
+        torch.nn.init.xavier_uniform_(m.weight.data)
+
 #defining NN layeres
 class Net(nn.Module):
     def __init__(self):
@@ -249,7 +255,9 @@ class Net(nn.Module):
         self.bn2 = nn.BatchNorm2d(num_features=32)
         self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        self.last_linear = nn.Linear(in_features=32 * 80 * 45, out_features=2)
+        self.fc1 = nn.Linear(in_features=32 * 80 * 45, out_features=100)
+        self.fc2 = nn.Linear(in_features=100, out_features=100)
+        # self.fc3 = nn.Linear(in_features=100, out_features=2)
 
     def forward(self, x):
         # X comes in with shape(batch_size, 3, 320, 180)
@@ -273,7 +281,9 @@ class Net(nn.Module):
 
         x = x.view(-1, 32 * 80 * 45)
         # After this view, it goes to shape (batch_size, 115200)
-        x = self.last_linear(x)
+        x = F.relu(self.fc1(x))
+        # x = F.relu(self.fc2(x))
+        x = self.fc2(x)
         # After last_linear, it goes to shape (batch_size, 2)
         return x
 
@@ -481,8 +491,12 @@ def test_run(criterion, device, test_loader, save = True):
 
     return test_inferences, test_losses, test_accs
 
-
 net = Net().to(device)
+if net_path == None:    
+    # net.apply(weights_init)
+    pass
+else:
+    net.load_state_dict(torch.load(net_path))
 
 transform = transforms.Compose([
     transforms.Resize([320, 180]),
@@ -507,19 +521,19 @@ val_loader =   DataLoader(dataset = val_set, batch_size=batch_size, shuffle=True
 test_loader =  DataLoader(dataset=test_set,  batch_size=batch_size, shuffle=True, num_workers=4)
 
 criterion = nn.CrossEntropyLoss()
-# optimizer = optim.Adam(net.parameters())
-optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+optimizer = optim.Adam(net.parameters())
+# optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
 
 train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
     criterion, optimizer, device, train_loader, val_loader,save=save)
 
-plt.plot(train_inferences)
-plt.plot(train_losses)
-plt.plot(train_accs)
-plt.plot(val_losses)
-plt.plot(val_accs)
-plt.show()
+# plt.plot(train_inferences)
+# plt.plot(train_losses)
+# plt.plot(train_accs)
+# plt.plot(val_losses)
+# plt.plot(val_accs)
+# plt.show()
 
 # test_inferences, test_losses, test_accs = test_run(criterion, device, test_loader, save=save)
 # plt.plot(test_inferences)

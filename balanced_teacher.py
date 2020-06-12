@@ -8,7 +8,7 @@ from random import randint
 
 #variable settings
 output_path = 'output'  
-video_path = "/home/igor/Documents/csgofootage/CSGOraw7.mp4"
+video_path = "/home/igor/Documents/csgofootage/CSGOigor1.mp4"
 samplerate = 1 #video capture framerate
 detectionrate = 2 #neural-network passthrogh rate
 seed(42)
@@ -57,7 +57,7 @@ while success:
     if absolute_frames % detectionrate == 0:
         #apply model to image
         try:
-            pred_boxes = detector.detect_on_image(img, threshold=0.89)
+            pred_boxes = detector.detect_on_image(img, threshold=0.94)
         except RuntimeError:
             #if memory runs out, as if frame was not detected
             ones_zeros.append(2)
