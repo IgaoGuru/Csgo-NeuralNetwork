@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pickle
 
-file_path = '/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave/model#2r'
+file_path = '/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave/model#1r'
 
 def train_interpreter(filepath):
     
@@ -13,6 +13,9 @@ def train_interpreter(filepath):
         print('STATS: ----------------\n')
         inferences = stats['inferences']
         print('median inference = %s \n'%(sum(inferences)/len(inferences)))
+
+        runtime = stats['runtime']
+        print('runtime: %s \n'%(runtime))
 
         losses = stats['losses']
         print('median loss: %s \n'%(sum(losses)/len(losses)))

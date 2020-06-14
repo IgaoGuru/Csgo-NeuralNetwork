@@ -23,11 +23,11 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/output/"
 model_save_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/modelsave"
 net_path = None #specify path to load specific network
 # train_split and test_split 0.1 > x > 0.9 and must add up to 1
-train_split = 0.7
+train_split = 0.01
 val_split = 0.15
-test_split = 0.15
-num_epochs = 25
-batch_size =  1
+test_split = 0.84
+num_epochs = 10 
+batch_size =  1 
 save = True
 ##dataset ---------------
 dict_override = False
@@ -42,11 +42,6 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
     print('running on: CPU')
-
-n_files = 0
-for file in os.listdir(model_save_path):
-    n_files += 1
-n_files = int(np.ceil((n_files/2)))
 
 class CsgoPersonDataset(data.Dataset):
     """preety description."""
@@ -214,6 +209,13 @@ class CsgoClassificationDataset(data.Dataset):
 
         return sample
 
+def file_index(model_save_path):
+    n_files = 0
+    for file in os.listdir(model_save_path):
+        n_files += 1
+    n_files = int(np.ceil((n_files/2)))
+    return n_files
+
 def binary_acc(y_pred, y_test):
     y_pred_tag = torch.log_softmax(y_pred, dim = 1)
     _, y_pred_tags = torch.max(y_pred_tag, dim = 1)
@@ -290,6 +292,8 @@ class Net(nn.Module):
 
 # runs NN in training mode
 def train_run(criterion, optimizer, device, train_loader, val_loader=None, save = True):
+
+    n_files = file_index(model_save_path)
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
     tic = time()
@@ -297,10 +301,12 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
     train_inferences = []
     train_losses = []
     train_accs = []
-    train_tp, train_tn, train_fp, train_fn = 0, 0, 0, 0
 
     val_losses = []
     val_accs = []
+
+    train_tpfn = []
+    val_tpfn = []
 
     print(len(train_loader.dataset))
     log_interval = 10
@@ -310,6 +316,7 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
 
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
+        tpfn = [0, 0, 0, 0] #tp, tn, fp, fn
         running_inference, running_loss, running_acc = 0.0, 0.0, 0.0
 
         for i, data in enumerate(train_loader):
@@ -336,10 +343,10 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
             running_acc += acc
 
             TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
-            train_tp += TP
-            train_tn += TN
-            train_fp += FP
-            train_fn += FN
+            tpfn[0] += TP
+            tpfn[1] += TN
+            tpfn[2] += FP
+            tpfn[3] += FN
 
             #backprop + optimizer
             loss.backward()
@@ -349,10 +356,12 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
                 print('training: [%d, %5d] loss: %.5f acc: %.0f'%\
                     (epoch + 1, i + 1, (running_loss / (i+1)), running_acc / (i+1)))
 
+        train_tpfn.append(tpfn)
         train_inferences.append(running_inference / num_batches_train)
         train_losses.append(running_loss / num_batches_train)
         train_accs.append(running_acc / num_batches_train)
 
+        tpfn = [0, 0, 0, 0] #tp, tn, fp, fn
         running_val_loss, running_val_acc = 0.0, 0.0
         #validation run
         for i, data in enumerate(val_loader):
@@ -369,10 +378,53 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
             acc = binary_acc(outputs, labels)
             running_val_acc += acc
             
+            TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
+            tpfn[0] += TP
+            tpfn[1] += TN
+            tpfn[2] += FP
+            tpfn[3] += FN
+
+            #backprop + optimizer
+            loss.backward()
+            optimizer.step()
+
+            if (i + 1) % log_interval == 0:  # print every 10 mini-batches
+                print('training: [%d, %5d] loss: %.5f acc: %.0f'%\
+                    (epoch + 1, i + 1, (running_loss / (i+1)), running_acc / (i+1)))
+
+        train_tpfn.append(tpfn)
+        train_inferences.append(running_inference / num_batches_train)
+        train_losses.append(running_loss / num_batches_train)
+        train_accs.append(running_acc / num_batches_train)
+
+        tpfn = [0, 0, 0, 0] #tp, tn, fp, fn
+        running_val_loss, running_val_acc = 0.0, 0.0
+        #validation run
+        for i, data in enumerate(val_loader):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data['image'], data['label']
+            #sends batch to gpu
+            inputs, labels = inputs.to(device), labels.to(device)
+            #run NN
+            outputs = net(inputs)
+
+            loss = criterion(outputs, labels)
+            running_val_loss += loss.item()
+
+            acc = binary_acc(outputs, labels)
+            running_val_acc += acc
+            
+            TP, TN, FP, FN = get_TFNP_classification(outputs, labels)
+            tpfn[0] += TP
+            tpfn[1] += TN
+            tpfn[2] += FP
+            tpfn[3] += FN
+
             if (i + 1) % log_interval == 0:  # print every 10 mini-batches
                 print('validation: [%d, %5d] loss: %.5f acc: %.0f'%\
                     (epoch + 1, i + 1, (running_val_loss / (i+1)), running_val_acc / (i+1)))
 
+        val_tpfn.append(tpfn)
         val_losses.append(running_val_loss / num_batches_val)
         val_accs.append(running_val_acc / num_batches_val)
 
@@ -398,19 +450,19 @@ def train_run(criterion, optimizer, device, train_loader, val_loader=None, save 
                 'losses' : train_losses,
                 'accuracy' : train_accs,
                 'runtime' : toc,
-                'tp':train_tp,
-                'tn':train_tn,
-                'fp':train_fp,
-                'fn':train_fn}
+                'train_tpfn' : train_tpfn}
             if val_loader != None:
                 to_dump['val_losses'] = val_losses
                 to_dump['val_accs'] = val_accs
+                to_dump['val_tpfn'] = val_tpfn
             pickle.dump(to_dump, file)
 
     return train_inferences, train_losses, train_accs, val_losses, val_accs
 
 #runs NN in testing mode
 def test_run(criterion, device, test_loader, save = True):
+
+    n_files = file_index(model_save_path)
 
     if save == False:
         print('ATTENTION: NO PROGRESS WILL BE SAVED\n--------------------------------------')
@@ -524,7 +576,22 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(net.parameters())
 # optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
-
+lr, momentum = 0.1, 0.5
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
+lr, momentum = 1, 0.5
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
+lr, momentum = 0.001, 0.9
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
+lr, momentum = 0.01, 0.9
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
+lr, momentum = 0.1, 0.9
+train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
+    criterion, optimizer, device, train_loader, val_loader,save=save)
+lr, momentum = 1, 0.9
 train_inferences, train_losses, train_accs, val_losses, val_accs = train_run(\
     criterion, optimizer, device, train_loader, val_loader,save=save)
 
