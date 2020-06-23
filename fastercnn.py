@@ -38,7 +38,7 @@ def get_custom_fasterrcnn(num_classes=2):
     # be [0]. More generally, the backbone should return an
     # OrderedDict[Tensor], and in featmap_names you can choose which
     # feature maps to use.
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=["0"],
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
                                                     output_size=5,
                                                     sampling_ratio=2)
 
@@ -72,7 +72,7 @@ def get_fasterrcnn_mobile(pretrained_backbone=True, num_classes=2):
     # be [0]. More generally, the backbone should return an
     # OrderedDict[Tensor], and in featmap_names you can choose which
     # feature maps to use.
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=[0],
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
                                                     output_size=5,
                                                     sampling_ratio=2)
 
