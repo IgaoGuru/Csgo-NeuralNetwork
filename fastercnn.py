@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import torch.nn as nn
 
+
 def get_fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=True, num_classes=2):
     torchvision.models.detection.fasterrcnn_resnet50_fpn()
     return torchvision.models.detection.fasterrcnn_resnet50_fpn(
@@ -37,7 +38,7 @@ def get_custom_fasterrcnn(num_classes=2):
     # be [0]. More generally, the backbone should return an
     # OrderedDict[Tensor], and in featmap_names you can choose which
     # feature maps to use.
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=[0],
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=["0"],
                                                     output_size=5,
                                                     sampling_ratio=2)
 

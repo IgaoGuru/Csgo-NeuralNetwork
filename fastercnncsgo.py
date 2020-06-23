@@ -13,10 +13,6 @@ def count_video_frames(video_path):
     return frame_idx
 
 
-
-
-
-
 torch.manual_seed(0)
 if torch.cuda.is_available():
     cuda = torch.device("cuda:0")

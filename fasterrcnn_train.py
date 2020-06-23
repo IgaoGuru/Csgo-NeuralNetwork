@@ -5,6 +5,7 @@ import torch.utils.data
 import matplotlib.pyplot as plt
 # Our own libraries
 import fastercnn
+import numpy as np
 import datasetcsgo
 
 
@@ -17,7 +18,7 @@ else:
     device = torch.device("cpu")
     print('running on: CPU')
 
-dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"
+dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/data/datasets/" #remember to put "/" at the end
 
 #net_func = fastrcnn.get_custom_fasterrcnn
 net_func = fastercnn.get_fasterrcnn_mobile
@@ -69,7 +70,10 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]
 
         optimizer.zero_grad()
-
+        
+        print(np.shape(images))
+        print(np.shape(targets))
+        print(targets)
         loss_dict = model(images, targets)
         loss = sum(l for l in loss_dict.values())
         loss_value = loss.item()
