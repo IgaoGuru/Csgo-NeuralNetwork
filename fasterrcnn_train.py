@@ -68,6 +68,11 @@ num_epochs = 100
 losses = []
 log_interval = len(train_loader.dataset) // 1
 min_avg_loss = 1e6
+
+print(f"Started training! Go have a coffee/mate/glass of water...")
+print(f"Log interval: {log_interval}")
+print(f"Please wait for first logging of the training")
+
 for epoch in range(num_epochs):  # loop over the dataset multiple times
 
     running_loss = 0.0
@@ -79,9 +84,6 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         optimizer.zero_grad()
         
-        print(np.shape(images))
-        print(np.shape(targets))
-        print(targets)
         loss_dict = model(images, targets)
         loss = sum(l for l in loss_dict.values())
         loss_value = loss.item()
