@@ -3,11 +3,19 @@ from torchvision import transforms
 import torch.optim as optim
 import torch.utils.data
 import matplotlib.pyplot as plt
+import torchvision
+import cv2
 # Our own libraries
 import fastercnn
 import numpy as np
 import datasetcsgo
 
+print(f"torch version: {torch.__version__}")
+print(f"Torch CUDA version: {torch.version.cuda}")
+print(f"torchvision version: {torchvision.__version__}")
+print(f"opencv version: {cv2.__version__}")
+
+print("")
 
 torch.manual_seed(42)
 
@@ -18,7 +26,7 @@ else:
     device = torch.device("cpu")
     print('running on: CPU')
 
-dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetwork/data/datasets/" #remember to put "/" at the end
+dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 
 #net_func = fastrcnn.get_custom_fasterrcnn
 net_func = fastercnn.get_fasterrcnn_mobile
