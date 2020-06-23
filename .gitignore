@@ -1,3 +1,4 @@
+*.th
 *.xml
 *.iml
 output/*
