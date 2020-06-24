@@ -5,6 +5,7 @@ from torchvision import transforms
 import cv2
 import time
 from scipy.spatial.distance import cdist
+import matplotlib.pyplot as plt
 # Our own libraries
 import fastercnn
 import datasetcsgo
