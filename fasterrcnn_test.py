@@ -105,7 +105,7 @@ for i, data in enumerate(test_loader):
     bboxes_pred_error = get_pred_error(bboxes_gt, bboxes_pred)
     bboxes_pred_errors.append(bboxes_pred_error)
 
-    img = cv2.UMat(img).get()
+    img = cv2.UMat(img).get() # this solves weird cv2.rectangle error
     if bboxes_pred is not None:
         for b in range(len(bboxes_pred)):
             pt1 = int(bboxes_pred[b][0][0]), int(bboxes_pred[b][0][1])
