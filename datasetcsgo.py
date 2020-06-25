@@ -63,6 +63,8 @@ class CsgoDataset(Dataset):
             for dir in dirs:
                 dict_datasets[dir] = load_dict_dataset(root_path, dir)
             break
+        if len(dict_datasets) == 0:
+            raise Exception('No dataset folder was found!')
         self.dict_frames = {}
         for dir, dict_dataset in dict_datasets.items():
             for k, v in dict_dataset.items():
