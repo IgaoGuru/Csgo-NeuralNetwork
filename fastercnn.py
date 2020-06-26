@@ -47,51 +47,20 @@ def get_custom_fasterrcnn(num_classes=2):
                       rpn_anchor_generator=anchor_generator,
                       box_roi_pool=roi_pooler)
 
-def _make_divisible(v, divisor, min_value=None):
-    """
-    This function is taken from PyTorch mobilenet.py, which in itself:
-
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.py
-    :param v:
-    :param divisor:
-    :param min_value:
-    :return:
-    """
-    if min_value is None:
-        min_value = divisor
-    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-    # Make sure that round down does not go down by more than 10%.
-    if new_v < 0.9 * v:
-        new_v += divisor
-    return int(new_v)
-
-class ConvBNReLU(nn.Sequential):
-    def __init__(self, in_planes, out_planes, kernel_size=3, stride=1, groups=1):
-        padding = (kernel_size - 1) // 2
-        super(ConvBNReLU, self).__init__(
-            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
-            nn.BatchNorm2d(out_planes),
-            nn.ReLU6(inplace=True)
-        )
-
-def get_small_backbone():
-    # Idea ans structure taken from MobileNet
-    width_mult = 1.0
-    input_channel = 32
-    round_nearest = 1.0
-    input_channel = _make_divisible(input_channel * width_mult, round_nearest)
+def get_simple_backbone():
+    kernel_size = 3
+    padding = (kernel_size - 1) // 2
     backbone_layers = [
-        ConvBNReLU(3, input_channel, stride=2)
+        nn.Conv2d(3, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
+        nn.BatchNorm2d(32),
+        nn.ReLU(inplace=True)
     ]
     backbone = nn.Sequential(*backbone_layers)
+    backbone.out_channels = 32
     return backbone
 
 def get_fasterrcnn_small(num_classes=2):
-    backbone = get_small_backbone()
-    backbone.out_channels = 32
+    backbone = get_simple_backbone()
     anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256),),
                                        aspect_ratios=((0.25, 0.5, 1.0, 2.0),))
     roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
