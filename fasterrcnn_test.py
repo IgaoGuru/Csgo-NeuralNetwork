@@ -35,7 +35,8 @@ _, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=42)
 test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
 #net_func = fastrcnn.get_custom_fasterrcnn
-net_func = fastercnn.get_fasterrcnn_mobile
+#net_func = fastercnn.get_fasterrcnn_mobile
+net_func = fastercnn.get_fasterrcnn_small
 
 
 net = net_func(num_classes=len(classes)+1)

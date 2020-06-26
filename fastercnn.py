@@ -47,24 +47,36 @@ def get_custom_fasterrcnn(num_classes=2):
                       rpn_anchor_generator=anchor_generator,
                       box_roi_pool=roi_pooler)
 
-def get_simple_backbone():
+def get_simple_backbone(num_convs=3, num_out_channels=32):
     kernel_size = 3
     padding = (kernel_size - 1) // 2
-    backbone_layers = [
-        nn.Conv2d(3, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        nn.BatchNorm2d(32),
-        nn.ReLU(inplace=True),
-
-        nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        nn.BatchNorm2d(32),
+    backbone_layers = []
+    backbone_layers.append(
+        nn.Conv2d(3, num_out_channels, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False)
+    )
+    backbone_layers.append(
+        nn.BatchNorm2d(num_out_channels)
+    )
+    backbone_layers.append(
         nn.ReLU(inplace=True)
-    ]
+    )
+    for _ in range(num_convs - 1):
+        num_convs += 1
+        backbone_layers.append(
+            nn.Conv2d(num_out_channels, num_out_channels, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False)
+        )
+        backbone_layers.append(
+            nn.BatchNorm2d(num_out_channels)
+        )
+        backbone_layers.append(
+            nn.ReLU(inplace=True)
+        )
     backbone = nn.Sequential(*backbone_layers)
-    backbone.out_channels = 32
+    backbone.out_channels = num_out_channels
     return backbone
 
-def get_fasterrcnn_small(num_classes=2):
-    backbone = get_simple_backbone()
+def get_fasterrcnn_small(num_classes=2, num_convs_backbone=3, num_backbone_out_channels=32):
+    backbone = get_simple_backbone(num_convs=num_convs_backbone, num_out_channels=num_backbone_out_channels)
     anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256),),
                                        aspect_ratios=((0.25, 0.5, 1.0, 2.0),))
     roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
