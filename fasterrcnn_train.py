@@ -18,7 +18,8 @@ print(f"opencv version: {cv2.__version__}")
 
 print("")
 
-torch.manual_seed(42)
+SEED = 42
+torch.manual_seed(SEED)
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -33,7 +34,7 @@ dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\dat
 net_func = fastercnn.get_fasterrcnn_small
 
 classes = ["Terrorist", "CounterTerrorist"]
-model = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=64)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=4, num_backbone_out_channels=16)
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -41,9 +42,8 @@ def init_weights(m):
         if m.bias is not None:
             m.bias.data.fill_(0.01)
 
-model.apply(init_weights)
+#model.apply(init_weights)
 model = model.to(device)
-
 
 transform = transforms.Compose([
     #transforms.Resize([200, 200]),
@@ -66,9 +66,9 @@ def my_collate_2(batch):
     labels = [item[2] for item in batch]
     return [imgs, bboxes, labels]
 
-batch_size = 4
+batch_size = 1
 
-train_set, _, _ = dataset.split(train=0.7, val=0.15, seed=42)
+train_set, _, _ = dataset.split(train=0.8, val=0.1, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
