@@ -53,6 +53,10 @@ def get_simple_backbone():
     backbone_layers = [
         nn.Conv2d(3, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
         nn.BatchNorm2d(32),
+        nn.ReLU(inplace=True),
+
+        nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
+        nn.BatchNorm2d(32),
         nn.ReLU(inplace=True)
     ]
     backbone = nn.Sequential(*backbone_layers)
