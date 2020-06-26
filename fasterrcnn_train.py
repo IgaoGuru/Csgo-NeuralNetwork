@@ -9,6 +9,7 @@ import cv2
 import fastercnn
 import numpy as np
 import datasetcsgo
+import torch.nn as nn
 
 print(f"torch version: {torch.__version__}")
 print(f"Torch CUDA version: {torch.version.cuda}")
@@ -29,12 +30,20 @@ else:
 dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 
 #net_func = fastrcnn.get_custom_fasterrcnn
-net_func = fastercnn.get_fasterrcnn_mobile
+net_func = fastercnn.get_fasterrcnn_small
 
 classes = ["Terrorist", "CounterTerrorist"]
-model = net_func(num_classes=len(classes)+1)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=64)
 
+def init_weights(m):
+    if type(m) == nn.Linear or type(m) == nn.Conv2d:
+        torch.nn.init.xavier_uniform(m.weight)
+        if m.bias is not None:
+            m.bias.data.fill_(0.01)
+
+model.apply(init_weights)
 model = model.to(device)
+
 
 transform = transforms.Compose([
     #transforms.Resize([200, 200]),
@@ -57,7 +66,7 @@ def my_collate_2(batch):
     labels = [item[2] for item in batch]
     return [imgs, bboxes, labels]
 
-batch_size = 1
+batch_size = 4
 
 train_set, _, _ = dataset.split(train=0.7, val=0.15, seed=42)
 
@@ -66,7 +75,7 @@ train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collat
 optimizer = optim.Adam(model.parameters())
 num_epochs = 100
 losses = []
-log_interval = len(train_loader.dataset) // 1
+log_interval = len(train_loader) // 1
 min_avg_loss = 1e6
 
 print(f"Started training! Go have a coffee/mate/glass of water...")
