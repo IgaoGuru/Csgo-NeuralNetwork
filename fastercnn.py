@@ -4,7 +4,7 @@ import torchvision
 import cv2
 import numpy as np
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 def get_fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone=True, num_classes=2):
     torchvision.models.detection.fasterrcnn_resnet50_fpn()
@@ -51,16 +51,18 @@ def get_simple_backbone():
     kernel_size = 3
     padding = (kernel_size - 1) // 2
     backbone_layers = [
-        nn.Conv2d(3, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        nn.BatchNorm2d(32),
-        nn.ReLU(inplace=True),
+        # nn.Conv2d(3, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
+        # nn.BatchNorm2d(32),
+        # nn.ReLU(inplace=True),
 
-        nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        nn.BatchNorm2d(32),
-        nn.ReLU(inplace=True)
+        # nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
+        # nn.BatchNorm2d(32),
+        # nn.ReLU(inplace=True),
+
+        nn.Linear(1344, 600)
     ]
     backbone = nn.Sequential(*backbone_layers)
-    backbone.out_channels = 32
+    backbone.out_channels = 600 
     return backbone
 
 def get_fasterrcnn_small(num_classes=2):

@@ -26,18 +26,20 @@ else:
     device = torch.device("cpu")
     print('running on: CPU')
 
-dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
+# dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
+dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 
 #net_func = fastrcnn.get_custom_fasterrcnn
-net_func = fastercnn.get_fasterrcnn_mobile
+net_func = fastercnn.get_fasterrcnn_small
 
 classes = ["Terrorist", "CounterTerrorist"]
 model = net_func(num_classes=len(classes)+1)
 
 model = model.to(device)
+print(model)
 
 transform = transforms.Compose([
-    #transforms.Resize([200, 200]),
+    transforms.Resize([360, 640]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
