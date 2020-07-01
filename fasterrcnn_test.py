@@ -12,7 +12,9 @@ import datasetcsgo
 
 IMG_SHAPE = (720, 1280)
 
-torch.manual_seed(42)
+SEED = 42
+torch.manual_seed(SEED)
+train_only = False  
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -21,16 +23,23 @@ else:
     device = torch.device("cpu")
     print('running on: CPU')
 
-dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"
+# dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
+dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 
 transform = transforms.Compose([
-    #transforms.Resize([200, 200]),
-    transforms.ToTensor(),
+    transforms.Resize([360, 640]),
+    transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
-classes = ["Terrorist", "CounterTerrorist"]
+if train_only == 'ct':
+    classes = ["CounterTerrorist"]
+if train_only == 'tr':
+    classes = ["Terrorist"]
+else:
+    classes = ["Terrorist", "CounterTerrorist"]
 
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform)
+
 _, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=42)
 test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 

@@ -20,6 +20,7 @@ print("")
 
 SEED = 42
 torch.manual_seed(SEED)
+train_only = False  
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -34,7 +35,13 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #re
 #net_func = fastrcnn.get_custom_fasterrcnn
 net_func = fastercnn.get_fasterrcnn_small
 
-classes = ["Terrorist", "CounterTerrorist"]
+if train_only == 'ct':
+    classes = ["CounterTerrorist"]
+if train_only == 'tr':
+    classes = ["Terrorist"]
+else:
+    classes = ["Terrorist", "CounterTerrorist"]
+
 model = net_func(num_classes=len(classes)+1, num_convs_backbone=4, num_backbone_out_channels=16)
 
 def init_weights(m):
@@ -92,7 +99,7 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         images = list(im.to(device) for im in imgs)
 
         targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]
-
+        print(targets[0])
         optimizer.zero_grad()
         
         loss_dict = model(images, targets)
