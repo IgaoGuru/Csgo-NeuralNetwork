@@ -99,7 +99,6 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         images = list(im.to(device) for im in imgs)
 
         targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]
-        print(targets[0])
         optimizer.zero_grad()
         
         loss_dict = model(images, targets)

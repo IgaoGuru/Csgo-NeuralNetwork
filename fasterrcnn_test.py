@@ -14,7 +14,7 @@ IMG_SHAPE = (720, 1280)
 
 SEED = 42
 torch.manual_seed(SEED)
-train_only = False  
+test_only = False  
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -31,9 +31,9 @@ transform = transforms.Compose([
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
-if train_only == 'ct':
+if test_only == 'ct':
     classes = ["CounterTerrorist"]
-if train_only == 'tr':
+if test_only == 'tr':
     classes = ["Terrorist"]
 else:
     classes = ["Terrorist", "CounterTerrorist"]
