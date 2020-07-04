@@ -42,7 +42,7 @@ if train_only == 'tr':
 else:
     classes = ["Terrorist", "CounterTerrorist"]
 
-model = net_func(num_classes=len(classes)+1, num_convs_backbone=4, num_backbone_out_channels=16)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=2, num_backbone_out_channels=16)
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:

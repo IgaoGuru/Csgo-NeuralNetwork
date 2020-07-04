@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+from os import walk
+import pickle
 from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms
 import cv2
@@ -25,6 +27,7 @@ else:
 
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
+results_folder = '/home/igor/Documents/csgotesting/' 
 
 transform = transforms.Compose([
     transforms.Resize([360, 640]),
@@ -48,14 +51,14 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 net_func = fastercnn.get_fasterrcnn_small
 
 
-net = net_func(num_classes=len(classes)+1)
+net = net_func(num_classes=len(classes)+1, num_convs_backbone=2, num_backbone_out_channels=16)
 print(f"Loading net from: {net_func.__name__ + '.th'}")
 net.load_state_dict(torch.load(net_func.__name__ + ".th"))
 
 net.eval()
 net.to(device)
 
-threshold = 0.7
+threshold = 0.1
 sample_rate = 1
 neuralnet_detection_rate = 1
 frame_idx = -1
@@ -86,6 +89,7 @@ def get_pred_error(bboxes_gt, bboxes_pred):
 
 acc = 0.0
 bboxes_pred_errors = []
+loss_total = {}
 for i, data in enumerate(test_loader):
     frame_idx += 1
     # Skip frame according to frame sample rate
@@ -97,17 +101,36 @@ for i, data in enumerate(test_loader):
 
     # Skip frame according to neuralnet detection rate
     if (frame_idx + 1) % neuralnet_detection_rate == 0:
+
+        #compute losses with marotagem
+        net.train()
+
+        images = list(im.to(device) for im in imgs)
+        targets_ = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes_gt, targets)]
+
+        lossdict = net(images, targets_)
+        net.eval()
+
+        # update loss_total
+        if i == 0:
+            for loss_type in lossdict:
+                loss_total[loss_type] = []
+        for loss_type in lossdict:
+            loss_total[loss_type].append(lossdict[loss_type].item())
+
+        #forward prop
         start = time.time()
         bboxes_pred, pred_cls, pred_scores = fastercnn.get_prediction_fastercnn(
             imgs[0].to(device), net, threshold, category_names=categories, img_is_path=False)
         cls_gt = np.array(categories)[[t.item() for t in targets[0]]]
-        #print(frame_idx)
+        print(frame_idx)
         #print(cls_gt)
         #print(pred_cls)
         end = time.time()
         net_elapseds.append(end - start)
         avg_net_elapsed = np.mean(net_elapseds)
         #print(f"Avg inference time: {avg_net_elapsed}")
+
     else:
         bboxes_pred = None
         pred_cls = None
@@ -125,16 +148,20 @@ for i, data in enumerate(test_loader):
             img = cv2.putText(img, f"{pred_cls[b]}: {pred_scores[b]:.2f}",
                               pt1, cv2.FONT_HERSHEY_SIMPLEX,
                               text_size, (0, 255, 0), thickness=text_th)
-    cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    time.sleep(0.1)
 
-    cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    #time.sleep(1)
+    # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    # time.sleep(0.5)
     #print("-----------------------------------------------------------------------")
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+#save loss_results:
+result_index = 0
+for i in walk(results_folder):
+    result_index+=1
+with open(f"{results_folder}test-results#{result_index}", 'wb') as file:
+    pickle.dump(loss_total, file) 
 cv2.destroyAllWindows()
 
 median_bboxes_pred_error = int(np.median(bboxes_pred_errors))

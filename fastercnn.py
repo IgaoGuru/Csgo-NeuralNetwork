@@ -51,8 +51,8 @@ def get_simple_backbone(num_convs=3, num_out_channels=32):
     kernel_size = 3
     padding = (kernel_size - 1) // 2
     backbone_layers = [
-        nn.Conv2d(3, 64, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        nn.BatchNorm2d(64),
+        nn.Conv2d(3, num_out_channels, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
+        nn.BatchNorm2d(num_out_channels),
         nn.ReLU(inplace=True),
 
         # nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
@@ -61,7 +61,7 @@ def get_simple_backbone(num_convs=3, num_out_channels=32):
 
     ]
     backbone = nn.Sequential(*backbone_layers)
-    backbone.out_channels = 64 
+    backbone.out_channels = num_out_channels 
     return backbone
 
 def get_fasterrcnn_small(num_classes=2, num_convs_backbone=3, num_backbone_out_channels=32):
