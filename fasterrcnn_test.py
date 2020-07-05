@@ -83,9 +83,9 @@ def get_pred_error(bboxes_gt, bboxes_pred):
     #print(np_bboxes_pred)
     dist_mtx_1 = cdist(np_bboxes_gt[:, 0:2], np_bboxes_pred[:, 0:2], metric="euclidean")
     dist_mtx_2 = cdist(np_bboxes_gt[:, 2:], np_bboxes_pred[:, 2:], metric="euclidean")
-    bboxes_pred_error_mtx = dist_mtx_1 + dist_mtx_2
+    bboxes_pred_error_mtx = (dist_mtx_1 + dist_mtx_2) / 2
     #print(bboxes_pred_error_mtx)
-    bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)) / 2)
+    bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)) / bboxes_pred_error_mtx.shape[1])
     return bboxes_pred_error
 
 acc = 0.0
@@ -141,6 +141,7 @@ for i, data in enumerate(test_loader):
     bboxes_pred_errors.append(bboxes_pred_error)
 
     img = cv2.UMat(img).get() # this solves weird cv2.rectangle error
+
     if bboxes_pred is not None:
         for b in range(len(bboxes_pred)):
             pt1 = int(bboxes_pred[b][0][0]), int(bboxes_pred[b][0][1])
@@ -151,8 +152,8 @@ for i, data in enumerate(test_loader):
                               text_size, (0, 255, 0), thickness=text_th)
 
     print(frame_idx)
-    # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    # time.sleep(0.5)
+    #cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    #time.sleep(0.5)
     #print("-----------------------------------------------------------------------")
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
