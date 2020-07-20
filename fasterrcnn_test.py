@@ -17,6 +17,7 @@ IMG_SHAPE = (720, 1280)
 SEED = 42
 torch.manual_seed(SEED)
 test_only = False  
+scale_factor = None #Leave "None" if no scaling should be done
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -28,6 +29,7 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
+model_path = '/home/igor/mlprojects/modelsave/model#1e199'
 
 transform = transforms.Compose([
     transforms.Resize([360, 640]),
@@ -41,7 +43,7 @@ if test_only == 'tr':
 else:
     classes = ["Terrorist", "CounterTerrorist"]
 
-dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform)
+dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
 
 _, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=42)
 test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
@@ -51,9 +53,9 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 net_func = fastercnn.get_fasterrcnn_small
 
 
-net = net_func(num_classes=len(classes)+1, num_convs_backbone=2, num_backbone_out_channels=16)
-print(f"Loading net from: {net_func.__name__ + '.th'}")
-net.load_state_dict(torch.load(net_func.__name__ + ".th"))
+net = net_func(num_classes=len(classes)+1, num_convs_backbone=2, num_backbone_out_channels=32)
+print(f"Loading net from: {model_path + '.th'}")
+net.load_state_dict(torch.load(model_path + ".th"))
 
 net.eval()
 net.to(device)
@@ -149,8 +151,8 @@ for i, data in enumerate(test_loader):
                               pt1, cv2.FONT_HERSHEY_SIMPLEX,
                               text_size, (0, 255, 0), thickness=text_th)
 
-    # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    # time.sleep(0.5)
+    cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    time.sleep(0.5)
     #print("-----------------------------------------------------------------------")
 
     if cv2.waitKey(1) & 0xFF == ord('q'):

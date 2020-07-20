@@ -50,9 +50,10 @@ class CsgoDataset(Dataset):
         "Bomb"
     ]
 
-    def __init__(self, root_path, classes=None, transform=None):
+    def __init__(self, root_path, classes=None, transform=None, scale_factor=None):
         self.root_path = root_path
         self.transform = transform
+        self.scale_factor = scale_factor
         if classes is None:
             self.classes = self.KNOWN_CLASSES
         else:
@@ -86,7 +87,10 @@ class CsgoDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         #clazz = self.dict_frames[self.frame_keys[idx]][0]
+
         bboxes = torch.tensor(self.dict_frames[self.frame_keys[idx]][1], dtype=torch.float)
+        if self.scale_factor != None:
+            bboxes = bboxes * self.scale_factor
         labels = torch.tensor([self.classes.index(c) for c in self.dict_frames[self.frame_keys[idx]][0]], dtype=torch.int64)
         return img, bboxes, labels
 
