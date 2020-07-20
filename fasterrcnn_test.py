@@ -84,9 +84,9 @@ def get_pred_error(bboxes_gt, bboxes_pred):
     #print(np_bboxes_pred)
     dist_mtx_1 = cdist(np_bboxes_gt[:, 0:2], np_bboxes_pred[:, 0:2], metric="euclidean")
     dist_mtx_2 = cdist(np_bboxes_gt[:, 2:], np_bboxes_pred[:, 2:], metric="euclidean")
-    bboxes_pred_error_mtx = dist_mtx_1 + dist_mtx_2
+    bboxes_pred_error_mtx = (dist_mtx_1 + dist_mtx_2) / 2
     #print(bboxes_pred_error_mtx)
-    bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)))
+    bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)) / bboxes_pred_error_mtx.shape[1])
     return bboxes_pred_error
 
 acc = 0.0
@@ -125,7 +125,7 @@ for i, data in enumerate(test_loader):
         bboxes_pred, pred_cls, pred_scores = fastercnn.get_prediction_fastercnn(
             imgs[0].to(device), net, threshold, category_names=categories, img_is_path=False)
         cls_gt = np.array(categories)[[t.item() for t in targets[0]]]
-        print(frame_idx)
+
         #print(cls_gt)
         #print(pred_cls)
         end = time.time()
@@ -142,6 +142,7 @@ for i, data in enumerate(test_loader):
     bboxes_pred_errors.append(bboxes_pred_error)
 
     img = cv2.UMat(img).get() # this solves weird cv2.rectangle error
+
     if bboxes_pred is not None:
         for b in range(len(bboxes_pred)):
             pt1 = int(bboxes_pred[b][0][0]), int(bboxes_pred[b][0][1])

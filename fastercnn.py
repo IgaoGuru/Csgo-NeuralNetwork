@@ -53,13 +53,12 @@ def get_simple_backbone(num_convs=3, num_out_channels=32):
     backbone_layers = [
         nn.Conv2d(3, num_out_channels, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
         nn.BatchNorm2d(num_out_channels),
-        nn.ReLU(inplace=True),
-
-        # nn.Conv2d(32, 32, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False),
-        # nn.BatchNorm2d(32),
-        # nn.ReLU(inplace=True),
-
+        nn.ReLU(inplace=True)
     ]
+    for i in range(num_convs - 1):
+        backbone_layers.append(nn.Conv2d(num_out_channels, num_out_channels, kernel_size=kernel_size, stride=2, padding=padding, groups=1, bias=False))
+        backbone_layers.append(nn.BatchNorm2d(num_out_channels))
+        backbone_layers.append(nn.ReLU(inplace=True))
     backbone = nn.Sequential(*backbone_layers)
     backbone.out_channels = num_out_channels 
     return backbone
