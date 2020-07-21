@@ -12,6 +12,7 @@ import torch.nn as nn
 # Our own libraries
 import fastercnn
 import datasetcsgo
+from util import loss_dict_template
 
 print(f"torch version: {torch.__version__}")
 print(f"Torch CUDA version: {torch.version.cuda}")
@@ -22,7 +23,7 @@ print("")
 
 SEED = 42
 torch.manual_seed(SEED)
-train_only = False  
+train_only = 'tr'  
 scale_factor = 0.2
 num_epochs = 200
 checkpoints = [0, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
@@ -51,7 +52,7 @@ if train_only == 'tr':
 else:
     classes = ["Terrorist", "CounterTerrorist"]
 
-model = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=32)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=1, num_backbone_out_channels=16)
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -91,7 +92,7 @@ def my_collate_2(batch):
 
 batch_size = 1
 
-train_set, _, _ = dataset.split(train=0.8, val=0.2, seed=SEED)
+train_set, _, _ = dataset.split(train=0.2, val=0.8, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
@@ -104,9 +105,12 @@ print(f"Started training! Go have a coffee/mate/glass of water...")
 print(f"Log interval: {log_interval}")
 print(f"Please wait for first logging of the training")
 
+loss_total_dict = loss_dict_template
 for epoch in range(num_epochs):  # loop over the dataset multiple times
 
+    loss_per_epoch = loss_dict_template
     running_loss = 0.0
+
     for i, data in enumerate(train_loader):
         imgs, bboxes, labels = data
         images = list(im.to(device) for im in imgs)
@@ -117,8 +121,13 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         loss_dict = model(images, targets)
         loss = sum(l for l in loss_dict.values())
         loss_value = loss.item()
-
-        running_loss += loss_value
+        
+        loss_per_epoch['loss_sum'].append(loss_value)
+        loss_per_epoch['loss_classifier'].append(loss_dict['loss_classifier'].item())
+        loss_per_epoch['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
+        loss_per_epoch['loss_objectness'].append(loss_dict['loss_objectness'].item())
+        loss_per_epoch['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
+        print(loss_per_epoch)
 
         if (i + 1) % log_interval == 0:
             print('[%d, %5d] loss: %.5f' %

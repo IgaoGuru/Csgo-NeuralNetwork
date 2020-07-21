@@ -53,7 +53,7 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 net_func = fastercnn.get_fasterrcnn_small
 
 
-net = net_func(num_classes=len(classes)+1, num_convs_backbone=2, num_backbone_out_channels=32)
+net = net_func(num_classes=len(classes)+1, num_convs_backbone=1, num_backbone_out_channels=32)
 print(f"Loading net from: {model_path + '.th'}")
 net.load_state_dict(torch.load(model_path + ".th"))
 
@@ -71,22 +71,32 @@ rect_th=1
 net_elapseds = []
 categories = ["Background"] + classes
 
-
 def get_pred_error(bboxes_gt, bboxes_pred):
+    #calculates diagonal of image rectangle
+    MAX_ERROR = int(np.sqrt(IMG_SHAPE[0]**2 + IMG_SHAPE[1]**2))
+    print("-----------------------------------------------------------")
+    #transform bboxes_gt into np.array(n, 4) 
     np_bboxes_gt = bboxes_gt.cpu().numpy()[0]
-    #print(np_bboxes_gt.shape)
-    #print(np_bboxes_gt)
+    print(f"Ground truth bboxes shape: {np_bboxes_gt.shape}")
+    #if nothing is predicted, penalize with maximum possible error per gt_bbox
     if bboxes_pred is None:
-        #print(max(IMG_SHAPE), np_bboxes_gt.shape[0])
-        return max(IMG_SHAPE) * np_bboxes_gt.shape[0]
+        print(f"Error for no prediction: {MAX_ERROR * np_bboxes_gt.shape[0]}")
+        return MAX_ERROR * np_bboxes_gt.shape[0]
+    #transform bboxes_pred into np.array(m, 4)
     np_bboxes_pred = np.array(bboxes_pred).reshape(-1, 4)
-    #print(np_bboxes_pred.shape)
-    #print(np_bboxes_pred)
+    print(f"Pred bboxes shape: {np_bboxes_pred.shape}")
+    #calculates distance matrix(n, m) between ground truth and pred.
     dist_mtx_1 = cdist(np_bboxes_gt[:, 0:2], np_bboxes_pred[:, 0:2], metric="euclidean")
     dist_mtx_2 = cdist(np_bboxes_gt[:, 2:], np_bboxes_pred[:, 2:], metric="euclidean")
     bboxes_pred_error_mtx = (dist_mtx_1 + dist_mtx_2) / 2
-    #print(bboxes_pred_error_mtx)
+    print(f"Error mtx shape: {bboxes_pred_error_mtx.shape}")
+    print(bboxes_pred_error_mtx)
+    print(np.min(bboxes_pred_error_mtx, axis=0))
     bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)) / bboxes_pred_error_mtx.shape[1])
+    num_lacking_bboxes = abs(np_bboxes_pred.shape[0] - np_bboxes_gt.shape[0])
+    print(f"num_lacking_bboxes: {num_lacking_bboxes}")
+    bboxes_pred_error += num_lacking_bboxes * MAX_ERROR
+    print("-----------------------------------------------------------")
     return bboxes_pred_error
 
 acc = 0.0

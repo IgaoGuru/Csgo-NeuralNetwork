@@ -61,3 +61,11 @@ def reduce_dict(input_dict, average=True):
             values /= world_size
         reduced_dict = {k: v for k, v in zip(names, values)}
     return reduced_dict
+
+loss_dict_template = {
+    'loss_sum' : [],
+    'loss_classifier' : [],
+    'loss_box_reg' : [],
+    'loss_objectness' : [],
+    'loss_rpn_box_reg' : []
+}
