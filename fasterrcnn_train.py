@@ -1,5 +1,5 @@
 from torch.utils.data.dataloader import DataLoader
-from shutil import move
+from os import replace
 from torchvision import transforms
 import torch.optim as optim
 import torch.utils.data
@@ -9,6 +9,7 @@ import torchvision
 import cv2
 import numpy as np
 import torch.nn as nn
+import pickle
 # Our own libraries
 import fastercnn
 import datasetcsgo
@@ -26,7 +27,7 @@ torch.manual_seed(SEED)
 train_only = 'tr'  
 scale_factor = 0.2
 num_epochs = 200
-checkpoints = [0, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+checkpoints = [0, 1, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
 model_number = 999
 
 if torch.cuda.is_available():
@@ -77,7 +78,7 @@ else:
 #dataset = CsgoPersonFastRCNNDataset(dataset_path, transform)
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
 
-# a simple custom collate function, just to show the idea
+# a simple custom collate function, just to show the idea def my_collate(batch):
 def my_collate(batch):
     imgs = [item[0] for item in batch]
     targets = [(item[1][0], item[1][1]) for item in batch]
@@ -97,18 +98,29 @@ train_set, _, _ = dataset.split(train=0.2, val=0.8, seed=SEED)
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
 optimizer = optim.Adam(model.parameters())
-losses = []
 log_interval = len(train_loader) // 1
-min_avg_loss = 1e6
 
 print(f"Started training! Go have a coffee/mate/glass of water...")
 print(f"Log interval: {log_interval}")
 print(f"Please wait for first logging of the training")
 
-loss_total_dict = loss_dict_template
+loss_total_dict = {
+    'loss_sum' : [],
+    'loss_classifier' : [],
+    'loss_box_reg' : [],
+    'loss_objectness' : [],
+    'loss_rpn_box_reg' : []
+}
+
 for epoch in range(num_epochs):  # loop over the dataset multiple times
 
-    loss_per_epoch = loss_dict_template
+#BUG: NO IDEA WHY: BONDING WITH UTILS.PY loss_per_epoch = {
+    loss_per_epoch = {
+        'loss_sum' : [],
+        'loss_classifier' : [],
+        'loss_box_reg' : [],
+        'loss_objectness' : [],
+        'loss_rpn_box_reg' : [] }
     running_loss = 0.0
 
     for i, data in enumerate(train_loader):
@@ -121,26 +133,35 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         loss_dict = model(images, targets)
         loss = sum(l for l in loss_dict.values())
         loss_value = loss.item()
-        
+
+        running_loss += loss_value 
+        # print(loss_per_epoch)
         loss_per_epoch['loss_sum'].append(loss_value)
+        if i == 100:
+            pass
         loss_per_epoch['loss_classifier'].append(loss_dict['loss_classifier'].item())
         loss_per_epoch['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
         loss_per_epoch['loss_objectness'].append(loss_dict['loss_objectness'].item())
         loss_per_epoch['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
-        print(loss_per_epoch)
 
         if (i + 1) % log_interval == 0:
             print('[%d, %5d] loss: %.5f' %
                   (epoch + 1, i + 1, running_loss / log_interval))
-            avg_loss = running_loss / log_interval
-            losses.append(avg_loss)
-            running_loss = 0.0
             print([(k, v.item()) for k, v in loss_dict.items()])
 
+            loss_total_dict['loss_sum'].append(sum(j for j in loss_per_epoch['loss_sum']) / i) 
+            loss_total_dict['loss_classifier'].append(sum(j for j in loss_per_epoch['loss_classifier']) / i) 
+            loss_total_dict['loss_box_reg'].append(sum(j for j in loss_per_epoch['loss_box_reg']) / i) 
+            loss_total_dict['loss_objectness'].append(sum(j for j in loss_per_epoch['loss_objectness']) / i) 
+            loss_total_dict['loss_rpn_box_reg'].append(sum(j for j in loss_per_epoch['loss_rpn_box_reg']) / i) 
+
+            running_loss = 0.0
             if epoch in checkpoints: 
-                min_avg_loss = avg_loss
                 print(f"Saving net at: {model_save_path}")
                 torch.save(model.state_dict(), model_save_path + 'e' + f'{epoch}' + '.th')
+                
+            with open(f'{model_save_path}-train', 'wb') as filezin:
+                pickle.dump(loss_total_dict, filezin)
 
         loss.backward()
 
@@ -149,6 +170,5 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}")
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
-plt.plot(losses[1:])
 plt.show()
 
