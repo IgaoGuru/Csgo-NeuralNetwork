@@ -11,6 +11,7 @@ import numpy as np
 import torch.nn as nn
 import pickle
 # Our own libraries
+from stat_interpreter_reg import interpreter
 import fastercnn
 import datasetcsgo
 from util import loss_dict_template
@@ -25,10 +26,10 @@ print("")
 SEED = 42
 torch.manual_seed(SEED)
 train_only = 'tr'  
-scale_factor = 0.2
+scale_factor = None
 num_epochs = 200
-checkpoints = [0, 1, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
-model_number = 999
+checkpoints = [19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+model_number = 999 #currently using '999' as "disposable" model_number :)
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -53,7 +54,7 @@ if train_only == 'tr':
 else:
     classes = ["Terrorist", "CounterTerrorist"]
 
-model = net_func(num_classes=len(classes)+1, num_convs_backbone=1, num_backbone_out_channels=16)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=9, num_backbone_out_channels=128)
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -93,7 +94,7 @@ def my_collate_2(batch):
 
 batch_size = 1
 
-train_set, _, _ = dataset.split(train=0.2, val=0.8, seed=SEED)
+train_set, _, _ = dataset.split(train=0.01, val=0.99, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
@@ -137,8 +138,6 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         running_loss += loss_value 
         # print(loss_per_epoch)
         loss_per_epoch['loss_sum'].append(loss_value)
-        if i == 100:
-            pass
         loss_per_epoch['loss_classifier'].append(loss_dict['loss_classifier'].item())
         loss_per_epoch['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
         loss_per_epoch['loss_objectness'].append(loss_dict['loss_objectness'].item())
@@ -170,5 +169,5 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}")
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
+interpreter(loss_dict=loss_total_dict)
 plt.show()
-

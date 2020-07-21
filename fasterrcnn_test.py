@@ -10,14 +10,15 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 # Our own libraries
 import fastercnn
+from stat_interpreter_reg import interpreter
 import datasetcsgo
 
 IMG_SHAPE = (720, 1280)
 
 SEED = 42
 torch.manual_seed(SEED)
-test_only = False  
-scale_factor = None #Leave "None" if no scaling should be done
+test_only = 'tr'
+scale_factor = 1 #Leave 1 if no scaling should be done
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -29,10 +30,10 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
-model_path = '/home/igor/mlprojects/modelsave/model#1e199'
+model_path = '/home/igor/mlprojects/modelsave/model#2e199'
 
 transform = transforms.Compose([
-    transforms.Resize([360, 640]),
+    transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
@@ -45,7 +46,7 @@ else:
 
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
 
-_, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=42)
+_, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=SEED)
 test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
 #net_func = fastrcnn.get_custom_fasterrcnn
@@ -53,7 +54,7 @@ test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 net_func = fastercnn.get_fasterrcnn_small
 
 
-net = net_func(num_classes=len(classes)+1, num_convs_backbone=1, num_backbone_out_channels=32)
+net = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=32)
 print(f"Loading net from: {model_path + '.th'}")
 net.load_state_dict(torch.load(model_path + ".th"))
 
@@ -99,9 +100,33 @@ def get_pred_error(bboxes_gt, bboxes_pred):
     print("-----------------------------------------------------------")
     return bboxes_pred_error
 
+# def get_pred_error(bboxes_gt, bboxes_pred):
+#     np_bboxes_gt = bboxes_gt.cpu().numpy()[0]
+#     #print(np_bboxes_gt.shape)
+#     #print(np_bboxes_gt)
+#     if bboxes_pred is None:
+#         #print(max(IMG_SHAPE), np_bboxes_gt.shape[0])
+#         return max(IMG_SHAPE) * np_bboxes_gt.shape[0]
+#     np_bboxes_pred = np.array(bboxes_pred).reshape(-1, 4)
+#     #print(np_bboxes_pred.shape)
+#     #print(np_bboxes_pred)
+#     dist_mtx_1 = cdist(np_bboxes_gt[:, 0:2], np_bboxes_pred[:, 0:2], metric="euclidean")
+#     dist_mtx_2 = cdist(np_bboxes_gt[:, 2:], np_bboxes_pred[:, 2:], metric="euclidean")
+#     bboxes_pred_error_mtx = dist_mtx_1 + dist_mtx_2
+#     #print(bboxes_pred_error_mtx)
+#     bboxes_pred_error = int(sum(np.min(bboxes_pred_error_mtx, axis=0)))
+#     return bboxes_pred_error
+
 acc = 0.0
 bboxes_pred_errors = []
 loss_total = {}
+loss_total_dict = {
+    'loss_sum' : [],
+    'loss_classifier' : [],
+    'loss_box_reg' : [],
+    'loss_objectness' : [],
+    'loss_rpn_box_reg' : []
+}
 for i, data in enumerate(test_loader):
     frame_idx += 1
     # Skip frame according to frame sample rate
@@ -120,15 +145,25 @@ for i, data in enumerate(test_loader):
         images = list(im.to(device) for im in imgs)
         targets_ = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes_gt, targets)]
 
-        lossdict = net(images, targets_)
+        loss_dict = net(images, targets_)
+        loss = sum(l for l in loss_dict.values())
+        loss_value = loss.item()
+
+        loss_total_dict['loss_sum'].append(loss_value)
+        loss_total_dict['loss_classifier'].append(loss_dict['loss_classifier'].item())
+        loss_total_dict['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
+        loss_total_dict['loss_objectness'].append(loss_dict['loss_objectness'].item())
+        loss_total_dict['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
+        print(loss_total_dict)
+
         net.eval()
 
         # update loss_total
         if i == 0:
-            for loss_type in lossdict:
+            for loss_type in loss_dict:
                 loss_total[loss_type] = []
-        for loss_type in lossdict:
-            loss_total[loss_type].append(lossdict[loss_type].item())
+        for loss_type in loss_dict:
+            loss_total[loss_type].append(loss_dict[loss_type].item())
 
         #forward prop
         start = time.time()
@@ -163,7 +198,7 @@ for i, data in enumerate(test_loader):
                               text_size, (0, 255, 0), thickness=text_th)
 
     cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    time.sleep(0.5)
+    # time.sleep(0.5)
     #print("-----------------------------------------------------------------------")
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -174,7 +209,7 @@ result_index = 0
 for i in walk(results_folder):
     result_index+=1
 with open(f"{results_folder}test-results#{result_index}", 'wb') as file:
-    pickle.dump(loss_total, file) 
+    pickle.dump(loss_total_dict, file) 
 cv2.destroyAllWindows()
 
 median_bboxes_pred_error = int(np.median(bboxes_pred_errors))
@@ -184,16 +219,18 @@ stddev_bboxes_pred_error = int(np.median(bboxes_pred_errors))
 print(f"Median bboxes pred error: {median_bboxes_pred_error}")
 print(f"Mean (+-stddev) bboxes pred error: {mean_bboxes_pred_error} +- {stddev_bboxes_pred_error}")
 
-hist, bins = np.histogram(bboxes_pred_errors)
-hist = hist / np.sum(hist)
-plt.bar(bins[:-1], hist, width=np.diff(bins))
+# hist, bins = np.histogram(bboxes_pred_errors)
+# hist = hist / np.sum(hist)
+# plt.bar(bins[:-1], hist, width=np.diff(bins))
 
-stddev_left = max(0, mean_bboxes_pred_error - stddev_bboxes_pred_error)
-stddev_right = mean_bboxes_pred_error + stddev_bboxes_pred_error
-stddev_width = stddev_right - stddev_left
-plt.bar(mean_bboxes_pred_error, np.max(hist), width=stddev_width, color="green")
+# stddev_left = max(0, mean_bboxes_pred_error - stddev_bboxes_pred_error)
+# stddev_right = mean_bboxes_pred_error + stddev_bboxes_pred_error
+# stddev_width = stddev_right - stddev_left
+# plt.bar(mean_bboxes_pred_error, np.max(hist), width=stddev_width, color="green")
 
-plt.vlines(median_bboxes_pred_error, 0, np.max(hist), color="orange", label='Median')
-plt.vlines(mean_bboxes_pred_error, 0, np.max(hist), color="green", label='Mean (+- stddev)')
-plt.legend()
+# plt.vlines(median_bboxes_pred_error, 0, np.max(hist), color="orange", label='Median')
+# plt.vlines(mean_bboxes_pred_error, 0, np.max(hist), color="green", label='Mean (+- stddev)')
+# plt.legend()
+
+interpreter(loss_dict=loss_total_dict)
 plt.show()
