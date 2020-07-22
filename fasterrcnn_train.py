@@ -26,7 +26,7 @@ print("")
 SEED = 42
 torch.manual_seed(SEED)
 train_only = 'tr'  
-scale_factor = None
+scale_factor = 1
 num_epochs = 200
 checkpoints = [0, 1, 2, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
 model_number = 999 #currently using '999' as "disposable" model_number :)
@@ -67,15 +67,10 @@ def init_weights(m):
 model = model.to(device)
 print(model)
 
-if scale_factor != None:
-    transform = transforms.Compose([
-    transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
+transform = transforms.Compose([
+    transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
-else:
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-    ])
 
 #dataset = CsgoPersonFastRCNNDataset(dataset_path, transform)
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
@@ -123,6 +118,13 @@ loss_total_dict_val = {
     'loss_rpn_box_reg' : []
 }
 
+#safety toggle to make sure no files are overwritten by accident while testing!
+if model_number != 999:
+    safety_toggle = input('ATTENTION: MODEL NUMBER IS :{model_number}:\
+        ANY FILES WITH THE SAME MODEL NUMBER WILL BE DELETED. Continue? (Y/n):')
+    if safety_toggle != 'Y' and safety_toggle != 'y':
+        raise ValueError('Please change the model number to 999, or choose to continue')
+
 for epoch in range(num_epochs):  # loop over the dataset multiple times
 
 #BUG: NO IDEA WHY: BONDING WITH UTILS.PY loss_per_epoch = {
@@ -146,6 +148,10 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
     model.train()
     for i, data in enumerate(train_loader):
         imgs, bboxes, labels = data
+        # img = imgs[0].numpy().copy().transpose(1, 2, 0)
+        # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
         images = list(im.to(device) for im in imgs)
 
         targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]
@@ -232,12 +238,10 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
                 loss_total_dict['loss_objectiveness_val'] = loss_total_dict_val['loss_sum']
                 loss_total_dict['loss_rpn_box_reg_val'] = loss_total_dict_val['loss_sum']
                 with open(f'{model_save_path}-train', 'wb') as filezin:
-                    print('AAAAAAAAAAAAAAAAAAAAAA')
-                    print(loss_total_dict)
                     pickle.dump(loss_total_dict, filezin)
 
 
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
-interpreter(loss_dict=loss_total_dict)
+interpreter(loss_dict=loss_total_dict, mode=1)
 plt.show()
