@@ -154,7 +154,6 @@ for i, data in enumerate(test_loader):
         loss_total_dict['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
         loss_total_dict['loss_objectness'].append(loss_dict['loss_objectness'].item())
         loss_total_dict['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
-        print(loss_total_dict)
 
         net.eval()
 

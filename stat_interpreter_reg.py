@@ -2,7 +2,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 dirpath = '/home/igor/mlprojects/modelsave/'
-filename = 'model#2-train'
+filename = 'model#999-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None):
@@ -21,4 +21,14 @@ def interpreter(filepath=None, loss_dict=None):
     plt.legend()
     plt.show()
 
+def train_val_comparison(filepath):
+    with open(filepath, 'rb') as filezin:
+        loss_dict = pickle.load(filezin)
+
+    plt.plot(loss_dict['loss_sum'], label='training_loss')
+    plt.plot(loss_dict['loss_sum_val'], label='validation_loss')
+    plt.legend()
+    plt.show()
+
 interpreter(filepath=filepath)
+train_val_comparison(filepath)

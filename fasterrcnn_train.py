@@ -28,8 +28,9 @@ torch.manual_seed(SEED)
 train_only = 'tr'  
 scale_factor = None
 num_epochs = 200
-checkpoints = [19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+checkpoints = [0, 1, 2, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
 model_number = 999 #currently using '999' as "disposable" model_number :)
+batch_size = 1
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -92,20 +93,29 @@ def my_collate_2(batch):
     labels = [item[2] for item in batch]
     return [imgs, bboxes, labels]
 
-batch_size = 1
 
-train_set, _, _ = dataset.split(train=0.01, val=0.99, seed=SEED)
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
 optimizer = optim.Adam(model.parameters())
 log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
 
 print(f"Started training! Go have a coffee/mate/glass of water...")
 print(f"Log interval: {log_interval}")
 print(f"Please wait for first logging of the training")
 
-loss_total_dict = {
+loss_total_dict = { 
+    'loss_sum' : [],
+    'loss_classifier' : [],
+    'loss_box_reg' : [],
+    'loss_objectness' : [],
+    'loss_rpn_box_reg' : []
+}
+
+loss_total_dict_val = { 
     'loss_sum' : [],
     'loss_classifier' : [],
     'loss_box_reg' : [],
@@ -124,6 +134,16 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         'loss_rpn_box_reg' : [] }
     running_loss = 0.0
 
+    loss_per_epoch_val = {
+        'loss_sum' : [],
+        'loss_classifier' : [],
+        'loss_box_reg' : [],
+        'loss_objectness' : [],
+        'loss_rpn_box_reg' : [] }
+    running_loss_val = 0.0
+
+    ################## TRAINING STARTS ######################## 
+    model.train()
     for i, data in enumerate(train_loader):
         imgs, bboxes, labels = data
         images = list(im.to(device) for im in imgs)
@@ -136,7 +156,6 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         loss_value = loss.item()
 
         running_loss += loss_value 
-        # print(loss_per_epoch)
         loss_per_epoch['loss_sum'].append(loss_value)
         loss_per_epoch['loss_classifier'].append(loss_dict['loss_classifier'].item())
         loss_per_epoch['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
@@ -144,7 +163,7 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         loss_per_epoch['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
 
         if (i + 1) % log_interval == 0:
-            print('[%d, %5d] loss: %.5f' %
+            print('Training:: [%d, %5d] loss: %.5f' %
                   (epoch + 1, i + 1, running_loss / log_interval))
             print([(k, v.item()) for k, v in loss_dict.items()])
 
@@ -166,8 +185,59 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
 
         optimizer.step()
 
-#print(f"Saving net at: {model.__class__.__name__ + '.th'}")
-#torch.save(model.state_dict(), model.__class__.__name__ + ".th")
+    ################## VALIDATION STARTS ######################## 
+    for i, data in enumerate(val_loader):
+        imgs, bboxes, labels = data
+        #TODO: ASK PAULO
+        img = imgs[0].numpy().copy().transpose(1, 2, 0)
+        images = list(im.to(device) for im in imgs)
+        targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]
 
+        #running model
+        loss_dict = model(images, targets)
+        loss = sum(l for l in loss_dict.values())
+        loss_value = loss.item()
+
+        running_loss += loss_value 
+        loss_per_epoch_val['loss_sum'].append(loss_value)
+        loss_per_epoch_val['loss_classifier'].append(loss_dict['loss_classifier'].item())
+        loss_per_epoch_val['loss_box_reg'].append(loss_dict['loss_box_reg'].item())
+        loss_per_epoch_val['loss_objectness'].append(loss_dict['loss_objectness'].item())
+        loss_per_epoch_val['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
+
+        # model.eval()
+
+        # #forward prop
+        # bboxes_pred, pred_cls, pred_scores = fastercnn.get_prediction_fastercnn(
+        #     imgs[0].to(device), net, threshold, category_names=categories, img_is_path=False)
+        # cls_gt = np.array(categories)[[t.item() for t in targets[0]]]
+
+        if (i + 1) % log_interval_val == 0:
+            print('Validation:: [%d, %5d] loss: %.5f' %
+                  (epoch + 1, i + 1, running_loss / log_interval_val))
+            print([(k, v.item()) for k, v in loss_dict.items()])
+
+            loss_total_dict_val['loss_sum'].append(sum(j for j in loss_per_epoch_val['loss_sum']) / i) 
+            loss_total_dict_val['loss_classifier'].append(sum(j for j in loss_per_epoch_val['loss_classifier']) / i) 
+            loss_total_dict_val['loss_box_reg'].append(sum(j for j in loss_per_epoch_val['loss_box_reg']) / i) 
+            loss_total_dict_val['loss_objectness'].append(sum(j for j in loss_per_epoch_val['loss_objectness']) / i) 
+            loss_total_dict_val['loss_rpn_box_reg'].append(sum(j for j in loss_per_epoch_val['loss_rpn_box_reg']) / i) 
+
+            running_loss = 0.0
+
+            if epoch in checkpoints: 
+                loss_total_dict['loss_sum_val'] = loss_total_dict_val['loss_sum']
+                loss_total_dict['loss_classifier_val'] = loss_total_dict_val['loss_sum']
+                loss_total_dict['loss_box_reg_val'] = loss_total_dict_val['loss_sum']
+                loss_total_dict['loss_objectiveness_val'] = loss_total_dict_val['loss_sum']
+                loss_total_dict['loss_rpn_box_reg_val'] = loss_total_dict_val['loss_sum']
+                with open(f'{model_save_path}-train', 'wb') as filezin:
+                    print('AAAAAAAAAAAAAAAAAAAAAA')
+                    print(loss_total_dict)
+                    pickle.dump(loss_total_dict, filezin)
+
+
+#print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
+#torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 interpreter(loss_dict=loss_total_dict)
 plt.show()
