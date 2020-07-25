@@ -30,10 +30,10 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
-model_path = '/home/igor/mlprojects/modelsave/model#3e199'
+model_path = '/home/igor/mlprojects/modelsave/model#9e79'
 
 transform = transforms.Compose([
-    transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),
+    transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
@@ -46,15 +46,15 @@ else:
 
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
 
-train_set, val_set, test_set = dataset.split(train=0.3, val=0.5, seed=SEED)
-test_loader = DataLoader(train_set, batch_size=1, shuffle=False)
+train_set, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=SEED)
+test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
 #net_func = fastrcnn.get_custom_fasterrcnn
 #net_func = fastercnn.get_fasterrcnn_mobile
 net_func = fastercnn.get_fasterrcnn_small
 
 
-net = net_func(num_classes=len(classes)+1, num_convs_backbone=9, num_backbone_out_channels=128)
+net = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=64)
 print(f"Loading net from: {model_path + '.th'}")
 net.load_state_dict(torch.load(model_path + ".th"))
 

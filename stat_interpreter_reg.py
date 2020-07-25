@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 dirpath = '/home/igor/mlprojects/modelsave/'
-filename = 'model#3-train'
+filename = 'model#9-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -14,7 +14,7 @@ def interpreter(filepath=None, loss_dict=None, mode=2):
     if loss_dict == None:
         with open(filepath, 'rb') as filezin:
             loss_dict = pickle.load(filezin)
-    # print(loss_dict)
+    print(loss_dict)
 
     plt.plot(loss_dict['loss_sum'], label='sum')
     plt.plot(loss_dict['loss_classifier'], label='classifier')
