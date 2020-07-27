@@ -28,9 +28,12 @@ torch.manual_seed(SEED)
 train_only = 'tr'  # leave none for mixed training
 scale_factor = 1
 num_epochs = 200
-checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+checkpoints = [0, 1, 14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
 model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
+convs_backbone = 5
+out_channels_backbone = 64
+reg_weight = 1e2 # leave 1 for no weighting
 
 #OPTIMIZER PARAMETERS ###############
 lr = 1
@@ -47,8 +50,6 @@ else:
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 model_save_path = '/home/igor/mlprojects/modelsave/'
 
-model_save_path = f"{model_save_path}model#{model_number}"  
-
 #net_func = fastrcnn.get_custom_fasterrcnn
 net_func = fastercnn.get_fasterrcnn_small
 
@@ -59,7 +60,7 @@ if train_only == 'tr':
 else:
     classes = ["Terrorist", "CounterTerrorist"]
 
-model = net_func(num_classes=len(classes)+1, num_convs_backbone=5, num_backbone_out_channels=64)
+model = net_func(num_classes=len(classes)+1, num_convs_backbone=convs_backbone, num_backbone_out_channels=out_channels_backbone)
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv2d:
@@ -72,7 +73,7 @@ model = model.to(device)
 print(model)
 
 transform = transforms.Compose([
-    transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
+    transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
@@ -134,6 +135,9 @@ if model_number != 999:
         raise ValueError('Please change the model number to 999, or choose to continue')
 
 def train_cycle():
+
+    model_save_path_new = f"{model_save_path}model#{model_number}"  
+
     for epoch in range(num_epochs):  # loop over the dataset multiple times
 
     #BUG: NO IDEA WHY: BONDING WITH UTILS.PY loss_per_epoch = {
@@ -167,6 +171,9 @@ def train_cycle():
             optimizer.zero_grad()
 
             loss_dict = model(images, targets)
+            #apply weighting to losses
+            if reg_weight != 1:
+                loss_dict['loss_box_reg'] = loss_dict['loss_box_reg'] * reg_weight
             loss = sum(l for l in loss_dict.values())
             loss_value = loss.item()
 
@@ -178,8 +185,8 @@ def train_cycle():
             loss_per_epoch['loss_rpn_box_reg'].append(loss_dict['loss_rpn_box_reg'].item())
 
             if (i + 1) % log_interval == 0:
-                print('Training:: [%d, %5d] loss: %.5f' %
-                    (epoch + 1, i + 1, running_loss / log_interval))
+                print('%s ::Training:: [%d, %5d] loss: %.5f' %
+                    (model_number, epoch + 1, i + 1, running_loss / log_interval))
                 print([(k, v.item()) for k, v in loss_dict.items()])
 
                 loss_total_dict['loss_sum'].append(sum(j for j in loss_per_epoch['loss_sum']) / i) 
@@ -190,10 +197,10 @@ def train_cycle():
 
                 running_loss = 0.0
                 if epoch in checkpoints: 
-                    print(f"Saving net at: {model_save_path}")
-                    torch.save(model.state_dict(), model_save_path + 'e' + f'{epoch}' + '.th')
+                    print(f"Saving net at: {model_save_path_new}")
+                    torch.save(model.state_dict(), model_save_path_new + 'e' + f'{epoch}' + '.th')
                     
-                with open(f'{model_save_path}-train', 'wb') as filezin:
+                with open(f'{model_save_path_new}-train', 'wb') as filezin:
                     pickle.dump(loss_total_dict, filezin)
 
             loss.backward()
@@ -228,8 +235,8 @@ def train_cycle():
             # cls_gt = np.array(categories)[[t.item() for t in targets[0]]]
 
             if (i + 1) % log_interval_val == 0:
-                print('Validation:: [%d, %5d] loss: %.5f' %
-                    (epoch + 1, i + 1, running_loss / log_interval_val))
+                print('%s ::Validation:: [%d, %5d] loss: %.5f' %
+                    (model_number, epoch + 1, i + 1, running_loss / log_interval_val))
                 print([(k, v.item()) for k, v in loss_dict.items()])
 
                 loss_total_dict_val['loss_sum'].append(sum(j for j in loss_per_epoch_val['loss_sum']) / i) 
@@ -246,12 +253,17 @@ def train_cycle():
                     loss_total_dict['loss_box_reg_val'] = loss_total_dict_val['loss_sum']
                     loss_total_dict['loss_objectiveness_val'] = loss_total_dict_val['loss_sum']
                     loss_total_dict['loss_rpn_box_reg_val'] = loss_total_dict_val['loss_sum']
-                    with open(f'{model_save_path}-train', 'wb') as filezin:
+                    with open(f'{model_save_path_new}-train', 'wb') as filezin:
                         pickle.dump(loss_total_dict, filezin)
 
 
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
+
+# model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, SEED=\
+#     'D2', 50, 1, 'tr', 5, 64, 0, 42 
+
 train_cycle()
-interpreter(loss_dict=loss_total_dict, mode=1)
-plt.show()
+
+# interpreter(loss_dict=loss_total_dict, mode=1)
+# plt.show()

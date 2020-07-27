@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 dirpath = '/home/igor/mlprojects/modelsave/'
-filename = 'model#9-train'
+filename = 'model#999-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -52,5 +52,5 @@ def train_val_comparison(filepath):
     plt.legend()
     plt.show()
 
-# interpreter(filepath=filepath, mode=1)
-# train_val_comparison(filepath)
+interpreter(filepath=filepath, mode=2)
+train_val_comparison(filepath)

@@ -15,7 +15,7 @@ import datasetcsgo
 
 IMG_SHAPE = (720, 1280)
 
-SEED = 42
+SEED = 12
 torch.manual_seed(SEED)
 test_only = 'tr'
 scale_factor = 1 #Leave 1 if no scaling should be done
@@ -30,7 +30,7 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
-model_path = '/home/igor/mlprojects/modelsave/model#9e79'
+model_path = '/home/igor/mlprojects/modelsave/model4/model#4e14'
 
 transform = transforms.Compose([
     transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
