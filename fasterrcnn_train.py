@@ -28,7 +28,7 @@ torch.manual_seed(SEED)
 train_only = 'tr'  # leave none for mixed training
 scale_factor = 1
 num_epochs = 200
-checkpoints = [0, 1, 14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
 model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
 convs_backbone = 5
@@ -161,8 +161,8 @@ def train_cycle():
         model.train()
         for i, data in enumerate(train_loader):
             imgs, bboxes, labels = data
-            # img = imgs[0].numpy().copy().transpose(1, 2, 0)
-            # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            img = imgs[0].numpy().copy().transpose(1, 2, 0)
+            cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             images = list(im.to(device) for im in imgs)
@@ -217,6 +217,9 @@ def train_cycle():
 
             #running model
             loss_dict = model(images, targets)
+            #apply weighting to losses
+            if reg_weight != 1:
+                loss_dict['loss_box_reg'] = loss_dict['loss_box_reg'] * reg_weight
             loss = sum(l for l in loss_dict.values())
             loss_value = loss.item()
 
@@ -260,8 +263,8 @@ def train_cycle():
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
-# model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, SEED=\
-#     'D2', 50, 1, 'tr', 5, 64, 0, 42 
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, SEED=\
+    10, 20, 1, 'tr', 5, 64, 0, 42 
 
 train_cycle()
 

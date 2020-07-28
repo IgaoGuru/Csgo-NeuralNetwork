@@ -5,7 +5,7 @@ import numpy
 datasets_folder = "/home/igor/Documents/footageimages/"
 videos_folder = "/home/igor/Documents/csgofootage/"
 
-video_name = "CSGOigor1"
+video_name = "CSGOigor2"
 video_ext = ".mp4"
 
 try:
