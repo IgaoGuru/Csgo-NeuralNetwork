@@ -33,7 +33,7 @@ model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
 convs_backbone = 5
 out_channels_backbone = 64
-reg_weight = 1e2 # leave 1 for no weighting
+reg_weight = 1 # leave 1 for no weighting
 
 #OPTIMIZER PARAMETERS ###############
 lr = 1
@@ -264,7 +264,7 @@ def train_cycle():
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
 model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, SEED=\
-    10, 20, 1, 'tr', 5, 64, 0, 42 
+    10, 20, 1, 'ct', 5, 64, 0, 42 
 
 train_cycle()
 

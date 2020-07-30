@@ -15,7 +15,7 @@ import datasetcsgo
 
 IMG_SHAPE = (720, 1280)
 
-SEED = 12
+SEED = 42
 torch.manual_seed(SEED)
 test_only = 'tr'
 scale_factor = 1 #Leave 1 if no scaling should be done
@@ -31,9 +31,10 @@ else:
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
 model_path = '/home/igor/mlprojects/modelsave/model4/model#4e14'
+# model_path = '/home/igor/mlprojects/modelsave/model#10e14'
 
 transform = transforms.Compose([
-    transforms.Resize([int(720*scale_factor), int(1280*scale_factor)]),
+    transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
 ])
 
@@ -47,7 +48,7 @@ else:
 dataset = datasetcsgo.CsgoDataset(dataset_path, classes=classes, transform=transform, scale_factor=scale_factor)
 
 train_set, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=SEED)
-test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+test_loader = DataLoader(val_set, batch_size=1, shuffle=False)
 
 #net_func = fastrcnn.get_custom_fasterrcnn
 #net_func = fastercnn.get_fasterrcnn_mobile
@@ -134,6 +135,7 @@ for i, data in enumerate(test_loader):
         continue
 
     imgs, bboxes_gt, targets = data
+    print(bboxes_gt)
     img = imgs[0].numpy().copy().transpose(1, 2, 0)
 
     # Skip frame according to neuralnet detection rate
@@ -189,15 +191,25 @@ for i, data in enumerate(test_loader):
 
     if bboxes_pred is not None:
         for b in range(len(bboxes_pred)):
-            pt1 = int(bboxes_pred[b][0][0]), int(bboxes_pred[b][0][1])
+            pt1 = int(bboxes_pred[b][0][0]), int(bboxes_pred[b][0][1]) 
             pt2 = int(bboxes_pred[b][1][0]), int(bboxes_pred[b][1][1])
             img = cv2.rectangle(img, pt1, pt2, (0, 255, 0), rect_th)
             img = cv2.putText(img, f"{pred_cls[b]}: {pred_scores[b]:.2f}",
                               pt1, cv2.FONT_HERSHEY_SIMPLEX,
                               text_size, (0, 255, 0), thickness=text_th)
 
+    if len(bboxes_gt[0]) != 1:
+        for b in range(len(bboxes_gt)):
+            pt1 = (int(bboxes_gt[0][b][0]), int(bboxes_gt[0][b][1]))
+            pt2 = (int(bboxes_gt[0][b][2]), int(bboxes_gt[0][b][3]))
+            img = cv2.rectangle(img, pt1, pt2, (255 , 0, 0), rect_th)
+    else:
+        pt1 = (int(bboxes_gt[0][0][0]), int(bboxes_gt[0][0][1]))
+        pt2 = (int(bboxes_gt[0][0][2]), int(bboxes_gt[0][0][3]))
+        img = cv2.rectangle(img, pt1, pt2, (255 , 0, 0), rect_th)
+
     cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    # time.sleep(0.5)
+    time.sleep(1.2)
     #print("-----------------------------------------------------------------------")
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
