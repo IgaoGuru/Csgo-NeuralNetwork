@@ -30,8 +30,8 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
-model_path = '/home/igor/mlprojects/modelsave/model4/model#4e14'
-# model_path = '/home/igor/mlprojects/modelsave/model#10e14'
+model_path = '/home/igor/mlprojects/modelsave/model#21e49'
+# model_path = '/home/igor/mlprojects/modelsave/model#12e49'
 
 transform = transforms.Compose([
     transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),

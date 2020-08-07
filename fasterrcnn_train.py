@@ -28,12 +28,13 @@ torch.manual_seed(SEED)
 train_only = 'tr'  # leave none for mixed training
 scale_factor = 1
 num_epochs = 200
-checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+# checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
+checkpoints = [14, 19, 39, 49]
 model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
 convs_backbone = 5
 out_channels_backbone = 64
-reg_weight = 1 # leave 1 for no weighting
+reg_weight = 1e2 # leave 1 for no weighting
 
 #OPTIMIZER PARAMETERS ###############
 lr = 1
@@ -107,26 +108,6 @@ print(f"Started training! Go have a coffee/mate/glass of water...")
 print(f"Log interval: {log_interval}")
 print(f"Please wait for first logging of the training")
 
-loss_total_dict = { 
-    'num_epochs' : num_epochs,
-    'lr' : lr,
-    'weight_decay' : weight_decay,
-    'seed' : SEED,
-    'loss_sum' : [],
-    'loss_classifier' : [],
-    'loss_box_reg' : [],
-    'loss_objectness' : [],
-    'loss_rpn_box_reg' : []
-}
-
-loss_total_dict_val = { 
-    'loss_sum' : [],
-    'loss_classifier' : [],
-    'loss_box_reg' : [],
-    'loss_objectness' : [],
-    'loss_rpn_box_reg' : []
-}
-
 #safety toggle to make sure no files are overwritten by accident while testing!
 if model_number != 999:
     safety_toggle = input('ATTENTION: MODEL NUMBER IS :{model_number}:\
@@ -134,7 +115,28 @@ if model_number != 999:
     if safety_toggle != 'Y' and safety_toggle != 'y':
         raise ValueError('Please change the model number to 999, or choose to continue')
 
+
 def train_cycle():
+    loss_total_dict = { 
+        'num_epochs' : num_epochs,
+        'lr' : lr,
+        'weight_decay' : weight_decay,
+        'seed' : SEED,
+        'loss_sum' : [],
+        'loss_classifier' : [],
+        'loss_box_reg' : [],
+        'loss_objectness' : [],
+        'loss_rpn_box_reg' : []
+    }
+
+    loss_total_dict_val = { 
+        'loss_sum' : [],
+        'loss_classifier' : [],
+        'loss_box_reg' : [],
+        'loss_objectness' : [],
+        'loss_rpn_box_reg' : []
+    }
+
 
     model_save_path_new = f"{model_save_path}model#{model_number}"  
 
@@ -162,7 +164,7 @@ def train_cycle():
         for i, data in enumerate(train_loader):
             imgs, bboxes, labels = data
             img = imgs[0].numpy().copy().transpose(1, 2, 0)
-            cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             images = list(im.to(device) for im in imgs)
@@ -263,9 +265,74 @@ def train_cycle():
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, SEED=\
-    10, 20, 1, 'ct', 5, 64, 0, 42 
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    21, 50, 1, 'tr', 5, 64, 0.001, 0, 42 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
 
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    22, 50, 1, 'tr', 5, 64, 0, 100, 42 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
+
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    23, 50, 1, 'tr', 5, 64, 0, 0, 10 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
+
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    24, 50, 1, 'tr', 5, 64, 0.001, 0, 10 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
+
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    25, 50, 1, 'tr', 5, 64, 0, 100, 10 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
+
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    26, 50, 1, 'tr', 5, 64, 0.001, 100, 42 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
+train_cycle()
+
+model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+    27, 50, 1, 'tr', 5, 64, 0.001, 100, 10 
+train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+log_interval = len(train_loader) // 1
+log_interval_val = len(val_loader) // 1
 train_cycle()
 
 # interpreter(loss_dict=loss_total_dict, mode=1)
