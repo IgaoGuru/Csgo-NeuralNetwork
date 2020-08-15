@@ -13,7 +13,7 @@ import fastercnn
 import stat_interpreter_reg as stats
 import datasetcsgo
 
-IMG_SHAPE = (720, 1280)
+IMG_SHAPE = (1080, 1920)
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -30,7 +30,7 @@ else:
 # dataset_path = "C:\\Users\\User\\Documents\\GitHub\\Csgo-NeuralNetworkPaulo\\data\\datasets\\"  #remember to put "/" at the end
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 results_folder = '/home/igor/Documents/csgotesting/' 
-model_path = '/home/igor/mlprojects/modelsave/model#21e49'
+model_path = '/home/igor/mlprojects/modelsave/model#29e49'
 # model_path = '/home/igor/mlprojects/modelsave/model#12e49'
 
 transform = transforms.Compose([

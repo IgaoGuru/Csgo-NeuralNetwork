@@ -47,7 +47,6 @@ class CsgoDataset(Dataset):
         "BackGround",
         "Terrorist",
         "CounterTerrorist"
-        "Bomb"
     ]
 
     def __init__(self, root_path, classes=None, transform=None, scale_factor=None):

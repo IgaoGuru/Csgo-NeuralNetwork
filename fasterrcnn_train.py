@@ -14,6 +14,7 @@ import pickle
 from stat_interpreter_reg import interpreter
 import fastercnn
 import datasetcsgo
+import autoencoder
 from util import loss_dict_template
 
 print(f"torch version: {torch.__version__}")
@@ -26,14 +27,15 @@ print("")
 SEED = 42
 torch.manual_seed(SEED)
 train_only = 'tr'  # leave none for mixed training
+autoencoder_switch = True
 scale_factor = 1
 num_epochs = 200
 # checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
-checkpoints = [14, 19, 39, 49]
+checkpoints = [14, 19, 49, 79, 99, 199, 299, 399, 499, 599, 699, 799, 899, 999]
 model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
-convs_backbone = 5
-out_channels_backbone = 64
+convs_backbone = 1
+out_channels_backbone = 4
 reg_weight = 1e2 # leave 1 for no weighting
 
 #OPTIMIZER PARAMETERS ###############
@@ -73,6 +75,11 @@ def init_weights(m):
 model = model.to(device)
 print(model)
 
+if autoencoder_switch == True:
+    model_ae = autoencoder.AE(input_shape=1080*1920)
+    model_ae = model_ae.to(device)
+    print(model_ae)
+
 transform = transforms.Compose([
     transforms.Resize([int(1080*scale_factor), int(1920*scale_factor)]),
     transforms.ToTensor(), # will put the image range between 0 and 1
@@ -99,6 +106,7 @@ train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+
 
 optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
 log_interval = len(train_loader) // 1
@@ -265,74 +273,14 @@ def train_cycle():
 #print(f"Saving net at: {model.__class__.__name__ + '.th'}") 
 #torch.save(model.state_dict(), model.__class__.__name__ + ".th")
 
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    21, 50, 1, 'tr', 5, 64, 0.001, 0, 42 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    22, 50, 1, 'tr', 5, 64, 0, 100, 42 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    23, 50, 1, 'tr', 5, 64, 0, 0, 10 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    24, 50, 1, 'tr', 5, 64, 0.001, 0, 10 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    25, 50, 1, 'tr', 5, 64, 0, 100, 10 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    26, 50, 1, 'tr', 5, 64, 0.001, 100, 42 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
-train_cycle()
-
-model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
-    27, 50, 1, 'tr', 5, 64, 0.001, 100, 10 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
-log_interval = len(train_loader) // 1
-log_interval_val = len(val_loader) // 1
+# model_number, num_epochs, scale_factor, train_only, convs_backbone, out_channels_backbone, weight_decay, reg_weight, SEED=\
+#     29, 50, 1, 'tr', 8, 64, 0.001, 0, 42 
+# train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+# train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+# val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+# optimizer = optim.Adam(model.parameters(), weight_decay=weight_decay)
+# log_interval = len(train_loader) // 1
+# log_interval_val = len(val_loader) // 1
 train_cycle()
 
 # interpreter(loss_dict=loss_total_dict, mode=1)

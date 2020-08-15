@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 dirpath = '/home/igor/mlprojects/modelsave/'
-filename = 'model#21-train'
+filename = 'model#29-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -14,7 +14,8 @@ def interpreter(filepath=None, loss_dict=None, mode=2):
     if loss_dict == None:
         with open(filepath, 'rb') as filezin:
             loss_dict = pickle.load(filezin)
-    print(loss_dict)
+    # print(loss_dict)
+    print('SEED:', loss_dict['seed'])
 
     plt.plot(loss_dict['loss_sum'], label='sum')
     plt.plot(loss_dict['loss_classifier'], label='classifier')
@@ -52,5 +53,5 @@ def train_val_comparison(filepath):
     plt.legend()
     plt.show()
 
-# interpreter(filepath=filepath, mode=1)
-# train_val_comparison(filepath)
+interpreter(filepath=filepath, mode=1)
+train_val_comparison(filepath)
