@@ -21,23 +21,31 @@ from util import loss_dict_template
 import datasetcsgo
 
 class AE(nn.Module):
-    def __init__(self, input_shape, stride, kernel_size, padding, num_out_channels, device):
-        super().__init__()
-        self.stride, self.kernel_size, self.padding, self.num_out_channels = stride, kernel_size, padding, num_out_channels
+    def __init__(self, stride, kernel_size, padding, num_out_channels):
+        super(AE, self).__init__()
+        # stride, kernel_size, padding, num_out_channels = self.stride, self.kernel_size, self.padding, self.num_out_channels
+        self.stride, self.kernel_size, self.padding, self.num_out_channels = stride, kernel_size, padding, num_out_channels 
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 16, 3, stride=stride, padding=padding),  # b, 16, 10, 10
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
+            nn.Conv2d(3, 3, 3, stride=stride, padding=padding),  # b, 8, 3, 3
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
+            nn.ReLU(True),
+            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
+            nn.ReLU(True),
+            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
+            nn.Tanh()
+        )
 
-        # self.nn_layers = nn.ModuleList()
-        self.conv1 = self.encoder_hidden_layer = nn.Conv2d(
-            3, num_out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=1, bias=False),
-
-    def forward(self, features):
-        self.conv1(features)
-
-        x = self.conv1(x)
-        x = nn.BatchNorm2d(num_out_channels),
-        x = nn.ReLU(inplace=True)
-        print(np.Size(features))
-
-        return reconstructed
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
 model_save_path = '/home/igor/mlprojects/ae_modelsave/'
@@ -73,7 +81,7 @@ train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 
-model = AE(input_shape = int(1080*1920), stride=2, kernel_size=kernel_size, padding=padding, num_out_channels=num_out_channels, device=device)
+model = AE(stride=2, kernel_size=3, padding=2, num_out_channels=3)
 model = model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
