@@ -27,7 +27,7 @@ print("")
 SEED = 42
 torch.manual_seed(SEED)
 train_only = 'tr'  # leave none for mixed training
-autoencoder_switch = True
+autoencoder_switch = False
 scale_factor = 1
 num_epochs = 200
 # checkpoints = [14, 19, 49, 79, 99, 119, 149, 179, 199] #all epoch indexes where the network should be saved
@@ -36,11 +36,11 @@ model_number = 999 #currently using '999' as "disposable" model_number :)
 batch_size = 1
 convs_backbone = 1
 out_channels_backbone = 4
-reg_weight = 1e2 # leave 1 for no weighting
+reg_weight = 1 # leave 1 for no weighting
 
 #OPTIMIZER PARAMETERS ###############
 lr = 1
-weight_decay = 0.005
+weight_decay = 0
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -102,7 +102,7 @@ def my_collate_2(batch):
     return [imgs, bboxes, labels]
 
 
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+train_set, val_set, _ = dataset.split(train=0.5, val=0.15, seed=SEED)
 
 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
 val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
@@ -171,10 +171,10 @@ def train_cycle():
         model.train()
         for i, data in enumerate(train_loader):
             imgs, bboxes, labels = data
-            img = imgs[0].numpy().copy().transpose(1, 2, 0)
+            # img = imgs[0].numpy().copy().transpose(1, 2, 0)
             # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
             images = list(im.to(device) for im in imgs)
 
             targets = [{'boxes': b.to(device), 'labels': l.to(device)} for b, l in zip(bboxes, labels)]

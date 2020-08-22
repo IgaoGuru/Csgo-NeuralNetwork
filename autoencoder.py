@@ -28,23 +28,32 @@ class AE(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 16, 3, stride=stride, padding=padding),  # b, 16, 10, 10
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
-            nn.Conv2d(3, 3, 3, stride=stride, padding=padding),  # b, 8, 3, 3
+            # nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
+
+            nn.Conv2d(16, 32, 3, stride=stride, padding=padding),  # b, 8, 3, 3
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
+            # nn.MaxPool2d(2, stride=1),  # b, 8, 2, 2
+
+            nn.Conv2d(32, 32, 3, stride=stride, padding=padding),  # b, 8, 3, 3
+            nn.ReLU(True),
+            # nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
+            nn.ConvTranspose2d(32, 32, 3, stride=stride, padding=padding),  # b, 16, 5, 5
             nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
+            nn.ConvTranspose2d(32, 16, 3, stride=stride, padding=1),  # b, 8, 15, 15
             nn.ReLU(True),
-            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
-            nn.Tanh()
+            nn.ConvTranspose2d(16, 3, 3, stride=stride, padding=padding),  # b, 1, 28, 28
+            nn.ZeroPad2d((1, 0, 1, 0))
+            # nn.Tanh()
         )
 
     def forward(self, x):
+        # print(x.shape)
         x = self.encoder(x)
+        # print(x.shape)
         x = self.decoder(x)
+        # print(x.shape)
         return x
 
 dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #remember to put "/" at the end
@@ -56,7 +65,7 @@ scale_factor = 1
 batch_size = 1
 
 #MODEL PARAMS
-stride, kernel_size, padding, num_out_channels = 2, 3, 2, 3
+stride, kernel_size, padding, num_out_channels = 2, 3, 0, 3
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -77,15 +86,17 @@ def my_collate_2(batch):
     return [imgs, bboxes, labels]
 
 dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor)
-train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
-val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True, collate_fn=my_collate_2)
+train_set, val_set, _ = dataset.split(train=0.1, val=0.15, seed=SEED)
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
 
 model = AE(stride=2, kernel_size=3, padding=2, num_out_channels=3)
 model = model.to(device)
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters())
 
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
 log_interval = len(train_loader) // 1
+print(f'log_interval is: {log_interval}')
 log_interval_val = len(val_loader) // 1
 
 arguments = {
@@ -96,13 +107,35 @@ arguments = {
 
 def train_cycle_ae():
     ae_loss_dict_total = {'loss_ae'}
+    total_i = len(train_loader)
+    running_loss = 0.0
     for epoch in range(num_epochs):  # loop over the dataset multiple times
-        for i, data in enumerate(dataset):
+        for i, data in enumerate(train_loader):
             imgs, _, _ = data 
-            print(np.shape(imgs))
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
-            # optimizer.zero_grad()
+            imgs = imgs.to(device)
 
-            # outputs = model()
+            # ===================forward=====================
+            output = model(imgs)
+            
+            img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
+            cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            loss = criterion(output, imgs)
+            running_loss += loss.item()
+            
+            if (i + 1) % log_interval == 0:
+                print('%s ::Training:: [%d, %5d] loss: %.5f' %
+                    ('yeah yeah', epoch + 1, i + 1, running_loss / log_interval))
+                running_loss = 0.0
+            # ===================backward====================
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            #pytorch lindinho
 
 train_cycle_ae()

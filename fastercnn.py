@@ -64,8 +64,10 @@ def get_simple_backbone(num_convs=3, num_out_channels=32):
     return backbone
 
 def get_fasterrcnn_small(num_classes=2, num_convs_backbone=3, num_backbone_out_channels=32):
-    backbone = get_simple_backbone(num_convs=num_convs_backbone, num_out_channels=num_backbone_out_channels)
-    anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256),),
+    # backbone = get_simple_backbone(num_convs=num_convs_backbone, num_out_channels=num_backbone_out_channels)
+    backbone = torchvision.models.alexnet(pretrained=True).features
+    backbone.out_channels = 256
+    anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256),), #BUG: doesn't have backbone
                                        aspect_ratios=((0.25, 0.5, 1.0, 2.0),))
     roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],
                                                     output_size=5,
