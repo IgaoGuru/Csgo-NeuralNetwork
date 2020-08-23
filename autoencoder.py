@@ -20,10 +20,10 @@ from util import loss_dict_template
 import datasetcsgo
 
 class AE(nn.Module):
-    def __init__(self, stride, kernel_size, padding, num_out_channels):
+    def __init__(self, stride, kernel_size, padding, num_out_channels, correction):
         super(AE, self).__init__()
         # stride, kernel_size, padding, num_out_channels = self.stride, self.kernel_size, self.padding, self.num_out_channels
-        self.stride, self.kernel_size, self.padding, self.num_out_channels = stride, kernel_size, padding, num_out_channels 
+        self.stride, self.kernel_size, self.padding, self.num_out_channels, self.correction = stride, kernel_size, padding, num_out_channels, correction
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size, stride=stride, padding=padding),  # b, 16, 10, 10
             nn.ReLU(True),
@@ -37,15 +37,24 @@ class AE(nn.Module):
             nn.ReLU(True),
             # nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
         )
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 32, kernel_size, stride=stride, padding=padding),  # b, 16, 5, 5
-            nn.ReLU(True),
-            nn.ConvTranspose2d(32, 16, kernel_size, stride=stride, padding=1),  # b, 8, 15, 15
-            nn.ReLU(True),
-            nn.ConvTranspose2d(16, 3, kernel_size, stride=stride, padding=padding),  # b, 1, 28, 28
-            nn.ZeroPad2d((1, 0, 1, 0))
+        if correction == True:
+            self.decoder = nn.Sequential(
+                nn.ConvTranspose2d(32, 32, kernel_size, stride=stride, padding=padding),  # b, 16, 5, 5
+                nn.ReLU(True),
+                nn.ConvTranspose2d(32, 16, kernel_size, stride=stride, padding=1),  # b, 8, 15, 15
+                nn.ReLU(True),
+                nn.ConvTranspose2d(16, 3, kernel_size, stride=stride, padding=padding),  # b, 1, 28, 28
+                nn.ZeroPad2d((1, 0, 1, 0))
             # nn.Tanh()
-        )
+            )
+        else:
+            self.decoder = nn.Sequential(
+                nn.ConvTranspose2d(32, 32, kernel_size, stride=stride, padding=padding),  # b, 16, 5, 5
+                nn.ReLU(True),
+                nn.ConvTranspose2d(32, 16, kernel_size, stride=stride, padding=1),  # b, 8, 15, 15
+                nn.ReLU(True),
+                nn.ConvTranspose2d(16, 3, kernel_size, stride=stride, padding=padding),  # b, 1, 28, 28
+            )
 
     def forward(self, x):
         # print(x.shape)
@@ -60,7 +69,7 @@ model_save_path = '/home/igor/mlprojects/modelsave-autoencoder/'
 SEED = 42
 
 model_number = 1
-num_epochs = 10
+num_epochs = 200
 scale_factor = 1
 batch_size = 1
 
@@ -92,7 +101,7 @@ def train_cycle_ae():
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
 
-    model = AE(stride=stride, kernel_size=kernel_size, padding=padding, num_out_channels=num_out_channels)
+    model = AE(stride=stride, kernel_size=kernel_size, padding=padding, num_out_channels=num_out_channels, correction=correction)
     model = model.to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
@@ -132,11 +141,6 @@ def train_cycle_ae():
                     ('yeah yeah', epoch + 1, i + 1, running_loss / log_interval))
                 ae_loss_dict['loss_ae'].append(running_loss)
                 running_loss = 0.0
-                if epoch in checkpoints: 
-                    print(f"Saving net at: {model_save_path_new}")
-                    torch.save(model.state_dict(), model_save_path_new + 'e' + f'{epoch}' + '.th')
-                    with open(f'{model_save_path_new}-train', 'wb') as filezin:
-                        pickle.dump(ae_loss_dict, filezin)
         
             # ===================backward====================
             optimizer.zero_grad()
@@ -162,8 +166,27 @@ def train_cycle_ae():
             if (i + 1) % log_interval == 0:
                 print('%s ::Validation:: [%d, %5d] loss: %.5f' %
                     ('yeah yeah', epoch + 1, i + 1, running_loss_val / log_interval_val))
-                ae_loss_dict['loss_ae_val'].append(running_loss)
+                ae_loss_dict['loss_ae_val'].append(running_loss_val)
                 running_loss_val = 0.0
+                if epoch in checkpoints: 
+                    print(f"Saving net at: {model_save_path_new}")
+                    torch.save(model.state_dict(), model_save_path_new + 'e' + f'{epoch}' + '.th')
+                    with open(f'{model_save_path_new}-train', 'wb') as filezin:
+                        pickle.dump(ae_loss_dict, filezin)
 
 checkpoints = [0, 1, 2, 15, 29, 49, 99, 149, 199]
+
+model_number = 1
+stride, kernel_size, padding, num_out_channels = 2, 2, 2, 3 #optimal: 2323
+correction = False
+train_cycle_ae()
+
+model_number = 2
+stride, kernel_size, padding, num_out_channels = 2, 3, 2, 3 #optimal: 2323
+correction = True
+train_cycle_ae()
+
+model_number = 3
+stride, kernel_size, padding, num_out_channels = 2, 5, 1, 3 #optimal: 2323
+correction = True
 train_cycle_ae()

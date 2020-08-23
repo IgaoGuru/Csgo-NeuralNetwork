@@ -2,8 +2,9 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-dirpath = '/home/igor/mlprojects/modelsave/'
-filename = 'model#29-train'
+# dirpath = '/home/igor/mlprojects/modelsave/'
+dirpath = '/home/igor/mlprojects/modelsave-autoencoder/'
+filename = 'aemodel#1-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -53,5 +54,15 @@ def train_val_comparison(filepath):
     plt.legend()
     plt.show()
 
-interpreter(filepath=filepath, mode=1)
-train_val_comparison(filepath)
+def autoencoder_interpreter(filepath=None, loss_dict=None):
+    if filepath==None and loss_dict==None:
+        raise ValueError('please input either a filepath, or a loss_dict!')
+    if loss_dict == None:
+        with open(filepath, 'rb') as filezin:
+            loss_dict = pickle.load(filezin)
+    print(loss_dict)
+
+
+# interpreter(filepath=filepath, mode=1)
+# train_val_comparison(filepath)
+autoencoder_interpreter(filepath)
