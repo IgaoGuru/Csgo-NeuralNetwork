@@ -49,7 +49,7 @@ class CsgoDataset(Dataset):
         "CounterTerrorist"
     ]
 
-    def __init__(self, root_path, classes=None, transform=None, scale_factor=None):
+    def __init__(self, root_path, classes=None, transform=None, scale_factor=None, ignore_empty_bboxes=True):
         self.root_path = root_path
         self.transform = transform
         self.scale_factor = scale_factor
