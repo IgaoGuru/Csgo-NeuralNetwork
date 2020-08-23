@@ -42,7 +42,7 @@ def load_dict_dataset(dataset_root_path, dataset_name):
 class CsgoDataset(Dataset):
     """ Dataset for CSGo Bounding Box detection of people """
 
-    ignore_empty_bboxes = True
+    ignore_empty_bboxes = False
     KNOWN_CLASSES = [
         "BackGround",
         "Terrorist",
@@ -62,6 +62,7 @@ class CsgoDataset(Dataset):
         for root, dirs, files in os.walk(root_path):
             for dir in dirs:
                 dict_datasets[dir] = load_dict_dataset(root_path, dir)
+                # print(len(dict_datasets[dir]))
             break
         if len(dict_datasets) == 0:
             raise Exception('No dataset folder was found!')
@@ -71,6 +72,10 @@ class CsgoDataset(Dataset):
                 if self.ignore_empty_bboxes and len(v[1]) > 0:
                     if set(v[0]).issubset(set(self.classes)):
                         frame_key = dir + "/" + k
+                        self.dict_frames[frame_key] = v
+                else:
+                    if set(v[0]).issubset(set(self.classes)):
+                        frame_key = dir + '/' + k
                         self.dict_frames[frame_key] = v
         self.length = len(self.dict_frames)
         self.frame_keys = list(self.dict_frames.keys())

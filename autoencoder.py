@@ -97,7 +97,8 @@ arguments = {
 
 def train_cycle_ae():
     dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor)
-    train_set, val_set, _ = dataset.split(train=0.1, val=0.15, seed=SEED)
+    print(len(dataset))
+    train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
 
