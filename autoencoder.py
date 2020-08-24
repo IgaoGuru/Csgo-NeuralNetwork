@@ -68,7 +68,7 @@ dataset_path = "/home/igor/mlprojects/Csgo-NeuralNetworkold/data/datasets/"  #re
 model_save_path = '/home/igor/mlprojects/modelsave-autoencoder/'
 SEED = 42
 
-model_number = 1
+model_number = 999
 num_epochs = 200
 scale_factor = 1
 batch_size = 1
@@ -96,7 +96,7 @@ arguments = {
 
 
 def train_cycle_ae():
-    dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor)
+    dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor, ignore_empty_bboxes=False)
     print(len(dataset))
     train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -129,8 +129,8 @@ def train_cycle_ae():
             # ===================forward=====================
             output = model(imgs)
             
-            img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
-            cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            # img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
+            # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
 
@@ -156,18 +156,19 @@ def train_cycle_ae():
             # ===================forward=====================
             output = model(imgs)
             
-            img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
-            cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            # img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
+            # cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
 
             loss = criterion(output, imgs)
             running_loss_val += loss.item()
             
-            if (i + 1) % log_interval == 0:
+            if (i + 1) % log_interval_val == 0:
                 print('%s ::Validation:: [%d, %5d] loss: %.5f' %
                     ('yeah yeah', epoch + 1, i + 1, running_loss_val / log_interval_val))
                 ae_loss_dict['loss_ae_val'].append(running_loss_val)
+                print(ae_loss_dict, '\n')
                 running_loss_val = 0.0
                 if epoch in checkpoints: 
                     print(f"Saving net at: {model_save_path_new}")

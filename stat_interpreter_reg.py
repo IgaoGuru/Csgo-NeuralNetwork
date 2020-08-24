@@ -4,7 +4,7 @@ import numpy as np
 
 # dirpath = '/home/igor/mlprojects/modelsave/'
 dirpath = '/home/igor/mlprojects/modelsave-autoencoder/'
-filename = 'aemodel#1-train'
+filename = 'aemodel#999-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -65,4 +65,4 @@ def autoencoder_interpreter(filepath=None, loss_dict=None):
 
 # interpreter(filepath=filepath, mode=1)
 # train_val_comparison(filepath)
-autoencoder_interpreter(filepath)
+# autoencoder_interpreter(filepath)
