@@ -1,4 +1,5 @@
 from torch.utils.data.dataloader import DataLoader
+import tqdm
 from os import replace
 from torchvision import transforms
 import torch.optim as optim
@@ -11,12 +12,10 @@ import numpy as np
 import torch.nn as nn
 import pickle
 # Our own libraries
-from stat_interpreter_reg import interpreter
+from stat_interpreter_reg import autoencoder_interpreter
 import fastercnn
 import datasetcsgo
 from util import loss_dict_template
-
-# Our own libraries
 import datasetcsgo
 
 class AE(nn.Module):
@@ -96,11 +95,13 @@ arguments = {
 
 
 def train_cycle_ae():
+
     dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor, ignore_empty_bboxes=False)
     print(len(dataset))
-    train_set, val_set, _ = dataset.split(train=0.7, val=0.15, seed=SEED)
+    train_set, val_set, test_set = dataset.split(train=0.7, val=0.15, seed=SEED)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
 
     model = AE(stride=stride, kernel_size=kernel_size, padding=padding, num_out_channels=num_out_channels, correction=correction)
     model = model.to(device)
@@ -176,19 +177,64 @@ def train_cycle_ae():
                     with open(f'{model_save_path_new}-train', 'wb') as filezin:
                         pickle.dump(ae_loss_dict, filezin)
 
+def test_cycle_ae():
+
+    dataset = datasetcsgo.CsgoDataset(dataset_path, transform=transform, scale_factor=scale_factor, ignore_empty_bboxes=False)
+    print(len(dataset))
+    _, _, test_set = dataset.split(train=0.8, val=0.15, seed=SEED)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
+
+    model = AE(stride=stride, kernel_size=kernel_size, padding=padding, num_out_channels=num_out_channels, correction=correction)
+    model.load_state_dict(torch.load(model_path + ".th"))
+    model = model.to(device)
+    criterion = nn.MSELoss()
+
+    log_interval = len(test_loader) // 1
+    print(f'log_interval is: {log_interval}')
+
+    running_loss = []
+    ae_loss_dict = {'loss_ae':[]} 
+
+    for i, data in enumerate(test_loader):
+        imgs, _, _ = data 
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        imgs = imgs.to(device)
+
+        # ===================forward=====================
+        output = model(imgs)
+        
+        img = output[0].detach().cpu().numpy().copy().transpose(1, 2, 0)
+        cv2.imshow('img', cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        loss = criterion(output, imgs)
+        running_loss.append(loss.item())
+
+    ae_loss_dict['loss_ae'] = running_loss
+
+    autoencoder_interpreter(loss_dict=ae_loss_dict, mode=2)
+
 checkpoints = [0, 1, 2, 15, 29, 49, 99, 149, 199]
 
-model_number = 1
+# model_number = 1
+# stride, kernel_size, padding, num_out_channels = 2, 2, 2, 3 #optimal: 2323
+# correction = False
+# train_cycle_ae()
+
+# model_number = 2
+# stride, kernel_size, padding, num_out_channels = 2, 3, 2, 3 #optimal: 2323
+# correction = True
+# train_cycle_ae()
+
+# model_number = 3
+# stride, kernel_size, padding, num_out_channels = 2, 5, 1, 3 #optimal: 2323
+# correction = True
+# train_cycle_ae()
+
+model_path = '/home/igor/mlprojects/modelsave-autoencoder/aemodel#1e149'
 stride, kernel_size, padding, num_out_channels = 2, 2, 2, 3 #optimal: 2323
 correction = False
-train_cycle_ae()
-
-model_number = 2
-stride, kernel_size, padding, num_out_channels = 2, 3, 2, 3 #optimal: 2323
-correction = True
-train_cycle_ae()
-
-model_number = 3
-stride, kernel_size, padding, num_out_channels = 2, 5, 1, 3 #optimal: 2323
-correction = True
-train_cycle_ae()
+test_cycle_ae()

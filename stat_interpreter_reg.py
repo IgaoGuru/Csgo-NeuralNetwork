@@ -4,7 +4,7 @@ import numpy as np
 
 # dirpath = '/home/igor/mlprojects/modelsave/'
 dirpath = '/home/igor/mlprojects/modelsave-autoencoder/'
-filename = 'aemodel#999-train'
+filename = 'aemodel#1-train'
 filepath = dirpath + filename
 
 def interpreter(filepath=None, loss_dict=None, mode=2):
@@ -54,15 +54,25 @@ def train_val_comparison(filepath):
     plt.legend()
     plt.show()
 
-def autoencoder_interpreter(filepath=None, loss_dict=None):
+def autoencoder_interpreter(filepath=None, loss_dict=None, mode=None):
+    if mode != 1 and mode != 2:
+        raise ValueError('please select either "1" for training, or "2" for testing')
     if filepath==None and loss_dict==None:
         raise ValueError('please input either a filepath, or a loss_dict!')
     if loss_dict == None:
         with open(filepath, 'rb') as filezin:
             loss_dict = pickle.load(filezin)
-    print(loss_dict)
+    
+    if mode == 1:
+        plt.plot(loss_dict['loss_ae'], label='training_loss')
+        plt.plot(loss_dict['loss_ae_val'], label='validation_loss')
+    else:
+        plt.plot(loss_dict['loss_ae'], label='training_loss')
+
+    plt.legend()
+    plt.show()
 
 
 # interpreter(filepath=filepath, mode=1)
 # train_val_comparison(filepath)
-# autoencoder_interpreter(filepath)
+autoencoder_interpreter(filepath, mode=1)
